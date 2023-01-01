@@ -126,7 +126,7 @@ make -j"$CORES" ARCH=arm64 O=out \
    if [[ -f "$IMAGE" ]]; then
       tgm "<i>Compile Kernel for $DEVICE_CODENAME successfully</i>"
    else
-      tgm "<i>Sending build log</i> . . ."
+      tgm "<i>Compile Kernel for $DEVICE_CODENAME failed, Check build log to fix it !!</i>"
       tgf "$BUILD_LOG" "❌ Compile fail in $(($DIFF / 60)) Minutes and $(($DIFF % 60)) Seconds, Check build log to fix it !!"
       exit 1
    fi
