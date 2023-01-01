@@ -85,6 +85,7 @@ function push() {
     ZIP=$(echo *.zip)
     RESPONSE="$(curl -# -F "name=${ZIP}" -F "file=@${ZIP}" -u :"${PD_API}" https://pixeldrain.com/api/file)"
     FILEID="$(echo "${RESPONSE}" | grep -Po '(?<="id":")[^"]*')"
+    tgf "$BUILD_LOG"
     tgf "$ZIP" "✅ Compile took in $(($DIFF / 60)) Minutes and $(($DIFF % 60)) Seconds for ${DEVICE_CODENAME}"
     tgm "<b>Mirror Download Link :</b> https://pixeldrain.com/u/$FILEID"
 }
