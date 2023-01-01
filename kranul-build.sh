@@ -56,11 +56,10 @@ export COMMIT_HEAD="$(git rev-parse --short HEAD)"
 IMAGE="${MainPath}/out/arch/arm64/boot/Image.gz-dtb"
 BUILD_LOG="${MainPath}/out/log-$(TZ=Asia/Jakarta date +'%H%M').txt"
 CORES="$(nproc --all)"
-CPU="$(lscpu | sed -nr '/Model name/ s/.*:\s*(.*) */\1/p')"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 DATE="$(date +"%d.%m.%Y")"
 
-# Function telegram message
+# Function of telegram
 git clone --depth=1 https://github.com/fabianonline/telegram.sh Telegram
 
 TELEGRAM="${MainPath}/Telegram/telegram"
@@ -86,16 +85,8 @@ function push() {
     ZIP=$(echo *.zip)
     RESPONSE="$(curl -# -F "name=${ZIP}" -F "file=@${ZIP}" -u :"${PD_API}" https://pixeldrain.com/api/file)"
     FILEID="$(echo "${RESPONSE}" | grep -Po '(?<="id":")[^"]*')"
-    tgf "$ZIP" "$KBUILD_COMPILER_STRING"
-    tgm "✅ Kernel compiled successfully $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s) for ${DEVICE_CODENAME}"
-    tgm "<b>Mirror Download Link Here :</b> https://pixeldrain.com/u/$FILEID"
-}
-
-# Function for uploaded error log
-function finerr() {
-    tgm "<i>Sending buildlog</i>"
-    tgf "$BUILD_LOG" "❌ Kernel compile fail $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s) | Check buildlog to fix errors !!"
-    exit 1
+    tgf "$ZIP" "✅ Compile took in $(($DIFF / 60)) Minutes and $(($DIFF % 60)) Seconds for ${DEVICE_CODENAME}"
+    tgm "<b>Mirror Download Link :</b> https://pixeldrain.com/u/$FILEID"
 }
 
 # Send info build to telegram channel
@@ -131,12 +122,15 @@ make -j"$CORES" ARCH=arm64 O=out \
     STRIP=llvm-strip \
     2>&1 | tee "${BUILD_LOG}"
 
-   if ! [ -a "$IMAGE" ]; then
-	finerr
-	exit 1
+   if [[ -f "$IMAGE" ]]; then
+      tgm "<i>Compile Kernel for $DEVICE_CODENAME successfully</i>"
+   else
+      tgm "<i>Sending build log</i> . . ."
+      tgf "$BUILD_LOG" "❌ Compile fail in $(($DIFF / 60)) Minutes and $(($DIFF % 60)) Seconds, Check build log to fix it !!"
+      exit 1
    fi
-   git clone --depth=1 https://github.com/Neebe3289/AnyKernel3 -b begonia-r-oss ${AnyKernelPath}
-        cp $IMAGE ${AnyKernelPath}
+      git clone --depth=1 https://github.com/Neebe3289/AnyKernel3 -b begonia-r-oss ${AnyKernelPath}
+      cp $IMAGE ${AnyKernelPath}
 }
 
 # Function zipping environment
