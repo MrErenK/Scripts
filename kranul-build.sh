@@ -32,9 +32,9 @@ git clone --depth=1 https://gitlab.com/Neebe3289/prebuilts_clang_host_linux-x86_
 # Clone binutils
 mkdir ${Gcc64Path}
 mkdir ${Gcc32Path}
-wget -q https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+archive/refs/tags/android-12.0.0_r27.tar.gz -O "gcc64.tar.gz"
+wget -q https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+archive/refs/tags/android-12.1.0_r27.tar.gz -O "gcc64.tar.gz"
 tar -xf gcc64.tar.gz -C ${Gcc64Path}
-wget -q https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/+archive/refs/tags/android-12.0.0_r27.tar.gz -O "gcc32.tar.gz"
+wget -q https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/+archive/refs/tags/android-12.1.0_r27.tar.gz -O "gcc32.tar.gz"
 tar -xf gcc32.tar.gz -C ${Gcc32Path}
 
 # Toolchain setup
@@ -114,8 +114,14 @@ make -j"$CORES" ARCH=arm64 O=out \
     CROSS_COMPILE_ARM32=arm-linux-androideabi- \
     CLANG_TRIPLE=aarch64-linux-gnu- \
     CC=clang \
-    LLVM=1 \
-    LLVM_IAS=1 2>&1 | tee "${BUILD_LOG}"
+    LD=ld.lld \
+    AR=llvm-ar \
+    NM=llvm-nm \
+    OBJCOPY=llvm-objcopy \
+    OBJDUMP=llvm-objdump \
+    READELF=llvm-readelf \
+    STRIP=llvm-strip \
+    LLVM=1 2>&1 | tee "${BUILD_LOG}"
 
    if [[ -f "$IMAGE" ]]; then
       tgm "<i>Compile Kernel for $DEVICE_CODENAME successfully</i>"
