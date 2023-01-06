@@ -27,7 +27,7 @@ AnyKernelPath="${MainPath}/anykernel"
 # Clone clang
 ClangPath=${MainClangPath}
 [[ "$(pwd)" != "${MainPath}" ]] && cd "${MainPath}"
-git clone --depth=1 https://gitlab.com/Neebe3289/prebuilts_clang_host_linux-x86_standalone.git -b clang-r450784e ${ClangPath}
+git clone --depth=1 https://gitlab.com/Neebe3289/prebuilts_clang_host_linux-x86_standalone.git -b clang-r475365b ${ClangPath}
 
 # Clone binutils
 mkdir ${Gcc64Path}
@@ -39,7 +39,7 @@ tar -xf gcc32.tar.gz -C ${Gcc32Path}
 
 # Toolchain setup
 export PATH="${ClangPath}/bin:${Gcc64Path}/bin:${Gcc32Path}/bin:${PATH}"
-export LD_LIBRARY_PATH="${ClangPath}/lib64:${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="${ClangPath}/lib:${LD_LIBRARY_PATH}"
 export KBUILD_COMPILER_STRING="$(${ClangPath}/bin/clang --version | head -n 1)"
 
 # Enviromental variable
@@ -114,14 +114,8 @@ make -j"$CORES" ARCH=arm64 O=out \
     CROSS_COMPILE_ARM32=arm-linux-androideabi- \
     CLANG_TRIPLE=aarch64-linux-gnu- \
     CC=clang \
-    LD=ld.lld \
-    AR=llvm-ar \
-    NM=llvm-nm \
-    OBJCOPY=llvm-objcopy \
-    OBJDUMP=llvm-objdump \
-    READELF=llvm-readelf \
-    STRIP=llvm-strip \
-    2>&1 | tee "${BUILD_LOG}"
+    LLVM=1 \
+    LLVM_IAS=1 2>&1 | tee "${BUILD_LOG}"
 
    if [[ -f "$IMAGE" ]]; then
       tgm "<i>Compile Kernel for $DEVICE_CODENAME successfully</i>"
