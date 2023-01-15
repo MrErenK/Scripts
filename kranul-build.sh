@@ -20,26 +20,16 @@
 MainPath="$(pwd)"
 MainClangPath="${MainPath}/clang"
 ClangPath="${MainClangPath}"
-Gcc64Path="${MainPath}/gcc64"
-Gcc32Path="${MainPath}/gcc32"
 AnyKernelPath="${MainPath}/anykernel"
 
 # Clone clang
 ClangPath=${MainClangPath}
 [[ "$(pwd)" != "${MainPath}" ]] && cd "${MainPath}"
-git clone --depth=1 https://gitlab.com/Neebe3289/prebuilts_clang_host_linux-x86_standalone.git -b clang-r475365b ${ClangPath}
-
-# Clone binutils
-mkdir ${Gcc64Path}
-mkdir ${Gcc32Path}
-wget -q https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+archive/refs/tags/android-12.1.0_r27.tar.gz -O "gcc64.tar.gz"
-tar -xf gcc64.tar.gz -C ${Gcc64Path}
-wget -q https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/+archive/refs/tags/android-12.1.0_r27.tar.gz -O "gcc32.tar.gz"
-tar -xf gcc32.tar.gz -C ${Gcc32Path}
+git clone --depth=1 https://github.com/kdrag0n/proton-clang -b master ${ClangPath}
 
 # Toolchain setup
-export PATH="${ClangPath}/bin:${Gcc64Path}/bin:${Gcc32Path}/bin:${PATH}"
-export LD_LIBRARY_PATH="${ClangPath}/lib:${LD_LIBRARY_PATH}"
+export PATH="${ClangPath}/bin:${PATH}"
+#export LD_LIBRARY_PATH="${ClangPath}/lib:${LD_LIBRARY_PATH}"
 export KBUILD_COMPILER_STRING="$(${ClangPath}/bin/clang --version | head -n 1)"
 
 # Enviromental variable
@@ -110,9 +100,8 @@ tgm "⚙️ <i>Compilation has been started</i>"
 compile(){
 make O=out ARCH=arm64 $DEVICE_DEFCONFIG
 make -j"$CORES" ARCH=arm64 O=out \
-    CROSS_COMPILE=aarch64-linux-android- \
-    CROSS_COMPILE_ARM32=arm-linux-androideabi- \
-    CLANG_TRIPLE=aarch64-linux-gnu- \
+    CROSS_COMPILE=aarch64-linux-gnu- \
+    CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
     CC=clang \
     LD=ld.lld \
     AR=llvm-ar \
