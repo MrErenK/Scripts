@@ -54,7 +54,6 @@ export KBUILD_BUILD_USER="EreN"
 export KBUILD_BUILD_HOST="kernel"
 export KERNEL_NAME="$(cat "arch/arm64/configs/$DEVICE_DEFCONFIG" | grep "CONFIG_LOCALVERSION=" | sed 's/CONFIG_LOCALVERSION="-*//g' | sed 's/"*//g' )"
 export SUBLEVEL="4.14.$(cat "${MainPath}/Makefile" | grep "SUBLEVEL =" | sed 's/SUBLEVEL = *//g')"
-export COMMIT_HEAD="$(git rev-parse --short HEAD)"
 IMAGE="${MainPath}/out/arch/arm64/boot/Image.gz-dtb"
 BUILD_LOG="${MainPath}/out/log-$(TZ=Asia/Jakarta date +'%H%M').txt"
 CORES="$(nproc --all)"
@@ -136,8 +135,8 @@ make -j"$CORES" ARCH=arm64 O=out \
 # Function zipping environment
 function zipping() {
     cd ${AnyKernelPath} || exit 1
-    sed -i "s/kernel.string=.*/kernel.string=${KERNEL_NAME}-${COMMIT_HEAD} by ${KBUILD_BUILD_USER}/g" anykernel.sh
-    zip -r9 ${KERNEL_NAME}-${DEVICE_CODENAME}-${COMMIT_HEAD}-${DATE}.zip * -x .git README.md *placeholder
+    sed -i "s/kernel.string=.*/kernel.string=${KERNEL_NAME} by ${KBUILD_BUILD_USER}/g" anykernel.sh
+    zip -r9 ${KERNEL_NAME}-${DEVICE_CODENAME}-${DATE}.zip * -x .git README.md *placeholder
     cd ..
 }
 compile
