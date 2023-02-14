@@ -31,8 +31,8 @@ mkdir ${ClangPath}
 cd !$
 curl -LO "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman"
 chmod +x antman && ./antman -S
-git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 -b lineage-19.1 ${Gcc64Path}
-git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9 -b lineage-19.1 ${Gcc32Path}
+git clone --depth=1 https://github.com/Sepatu-Bot/arm64-gcc ${Gcc64Path}
+git clone --depth=1 https://github.com/Sepatu-Bot/gcc-arm ${Gcc32Path}
 
 # Toolchain setup
 export PATH="${ClangPath}/bin:${Gcc64Path}/bin:${Gcc32Path}/bin:${PATH}"
