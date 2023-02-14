@@ -84,7 +84,8 @@ tgf() {
 function push() {
     cd ${AnyKernelPath}
     ZIP=$(echo *.zip)
-    tgf "$ZIP" "✅ Compile took $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s)."
+    tgf "$ZIP" "✅ Compile took $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s). Cleaning workspace..."
+    cleanup
 }
 
 # Send info build to telegram channel
@@ -135,6 +136,13 @@ function zipping() {
     zip -r9 ${KERNEL_NAME}-${DEVICE_CODENAME}-${DATE}.zip * -x .git README.md *placeholder
     cd ..
 }
+
+function cleanup() {
+    cd ${MainPath}
+    make mrproper
+    sudo rm -rf anykernel/
+}
+
 compile
 zipping
 END=$(date +"%s")
