@@ -65,7 +65,9 @@ OSS="R-OSS"
 KERNEL_VARIANT="neutron"
 
 # Function of telegram
-git clone --depth=1 https://github.com/fabianonline/telegram.sh Telegram
+if [ ! -f "${MainPath}/Telegram/telegram" ]; then
+  git clone --depth=1 https://github.com/fabianonline/telegram.sh Telegram
+fi
 
 TELEGRAM="${MainPath}/Telegram/telegram"
 tgm() {
