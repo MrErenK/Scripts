@@ -151,6 +151,7 @@ function cleanup() {
     cd ${MainPath}
     make mrproper
     sudo rm -rf anykernel/
+    sudo rm -rf out/arch/arm64/boot/*
 }
 
 function kernelsu() {
