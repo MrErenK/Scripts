@@ -23,6 +23,7 @@ ClangPath="${MainClangPath}"
 Gcc64Path="${MainPath}/gcc64"
 Gcc32Path="${MainPath}/gcc32"
 AnyKernelPath="${MainPath}/anykernel"
+STARTTIME="$(TZ='Asia/Jakarta' date +%H%M)"
 
 # Clone toolchain
 ClangPath=${MainClangPath}
@@ -55,7 +56,7 @@ export KBUILD_BUILD_HOST="kernel"
 export KERNEL_NAME="$(cat "arch/arm64/configs/$DEVICE_DEFCONFIG" | grep "CONFIG_LOCALVERSION=" | sed 's/CONFIG_LOCALVERSION="-*//g' | sed 's/"*//g' )"
 export SUBLEVEL="4.14.$(cat "${MainPath}/Makefile" | grep "SUBLEVEL =" | sed 's/SUBLEVEL = *//g')"
 IMAGE="${MainPath}/out/arch/arm64/boot/Image.gz-dtb"
-BUILD_LOG="${MainPath}/out/log-$(TZ=Asia/Jakarta date +'%H%M').txt"
+BUILD_LOG="${MainPath}/out/log-${STARTTIME}.txt"
 CORES="$(nproc --all)"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 DATE="$(date +"%d.%m.%Y")"
