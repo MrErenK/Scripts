@@ -60,6 +60,8 @@ BUILD_LOG="${MainPath}/out/log-${STARTTIME}.txt"
 CORES="$(nproc --all)"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 DATE="$(date +"%d.%m.%Y")"
+OSS="R-OSS"
+KERNEL_VARIANT="neutron"
 
 # Function of telegram
 git clone --depth=1 https://github.com/fabianonline/telegram.sh Telegram
@@ -98,6 +100,8 @@ tgm "
 <b>• LINUX VERSION :</b> <code>${SUBLEVEL}</code>
 <b>• BRANCH NAME :</b> <code>${BRANCH}</code>
 <b>• COMPILER :</b> <code>${KBUILD_COMPILER_STRING}</code>
+<b>• OSS VERSION :</b> <code>${OSS}</code>
+<b>• KERNEL VARIANT :</b> <code>${KERNEL_VARIANT}</code>
 <b>===========================================</b>
 "
 
@@ -132,8 +136,8 @@ make -j"$CORES" ARCH=arm64 O=out \
 # Function zipping environment
 function zipping() {
     cd ${AnyKernelPath} || exit 1
-    sed -i "s/kernel.string=.*/kernel.string=${KERNEL_NAME} by ${KBUILD_BUILD_USER}/g" anykernel.sh
-    zip -r9 ${KERNEL_NAME}-${DEVICE_CODENAME}-${DATE}.zip * -x .git README.md *placeholder
+    sed -i "s/kernel.string=.*/kernel.string=${KERNEL_NAME}-${KERNEL_VARIANT} by ${KBUILD_BUILD_USER}/g" anykernel.sh
+    zip -r9 ${KERNEL_NAME}-$(echo "$KERNEL_VARIANT" | tr '[:upper:]' '[:lower:]')-${DEVICE_CODENAME}-${OSS}.zip * -x .git README.md *placeholder
     cd ..
 }
 
