@@ -28,17 +28,17 @@ STARTTIME="$(TZ='Asia/Jakarta' date +%H%M)"
 # Clone toolchain
 ClangPath=${MainClangPath}
 [[ "$(pwd)" != "${MainPath}" ]] && cd "${MainPath}"
-if [ ! -d "${ClangPath}" ]; then
+if [ ! -f "${ClangPath}/bin/clang" ]; then
   mkdir ${ClangPath}
   cd ${ClangPath}
   curl -LO "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman"
   chmod +x antman && ./antman -S
   cd ..
 fi
-if [ ! -d "${Gcc64Path}" ]; then
+if [ ! -f "${Gcc64Path}/bin/aarch64-elf-gcc" ]; then
   git clone --depth=1 https://github.com/Sepatu-Bot/arm64-gcc ${Gcc64Path}
 fi
-if [ ! -d "${Gcc32Path}" ]; then
+if [ ! -f "${Gcc32Path}/bin/arm-eabi-gcc" ]; then
   git clone --depth=1 https://github.com/Sepatu-Bot/gcc-arm ${Gcc32Path}
 fi
 
