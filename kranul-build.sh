@@ -81,15 +81,14 @@ tgf() {
 
 # Function for uploaded kernel file
 function push() {
-    tgm "<i>Start to uploaded kernel file</i>"
     cd ${AnyKernelPath}
     ZIP=$(echo *.zip)
-    tgf "$BUILD_LOG"
-    tgf "$ZIP" "✅ Compile took in $(($DIFF / 60)) Minutes and $(($DIFF % 60)) Seconds for ${DEVICE_CODENAME}"
+    tgf "$ZIP" "✅ Compile took $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s)."
 }
 
 # Send info build to telegram channel
 tgm "
+⚙ <i>Compilation has been started</i>
 <b>===========================================</b>
 <b>• DATE :</b> <code>$(TZ=Asia/Jakarta date +"%A, %d %b %Y, %H:%M:%S")</code>
 <b>• DEVICE :</b> <code>${DEVICE_MODEL} ($DEVICE_CODENAME)</code>
@@ -97,13 +96,11 @@ tgm "
 <b>• LINUX VERSION :</b> <code>${SUBLEVEL}</code>
 <b>• BRANCH NAME :</b> <code>${BRANCH}</code>
 <b>• COMPILER :</b> <code>${KBUILD_COMPILER_STRING}</code>
-<b>• LAST COMMIT :</b> <code>$(git log --pretty=format:'%s' -1)</code>
 <b>===========================================</b>
 "
 
 # Start Compile
 START=$(date +"%s")
-tgm "⚙️ <i>Compilation has been started</i>"
 
 compile(){
 make O=out ARCH=arm64 $DEVICE_DEFCONFIG
@@ -122,14 +119,12 @@ make -j"$CORES" ARCH=arm64 O=out \
     2>&1 | tee "${BUILD_LOG}"
 
    if [[ -f "$IMAGE" ]]; then
-      tgm "<i>Compile Kernel for $DEVICE_CODENAME successfully</i>"
-   else
-      tgm "<i>Compile Kernel for $DEVICE_CODENAME failed, Check build log to fix it !!</i>"
-      tgf "$BUILD_LOG" "❌ Compile fail in $(($DIFF / 60)) Minutes and $(($DIFF % 60)) Seconds, Check build log to fix it !!"
-      exit 1
-   fi
       git clone --depth=1 https://github.com/Neebe3289/AnyKernel3 -b begonia-r-oss ${AnyKernelPath}
       cp $IMAGE ${AnyKernelPath}
+   else
+      tgf "$BUILD_LOG" "<i> ❌ Compile Kernel for $DEVICE_CODENAME failed, Check build log to fix it!</i>"
+      exit 1
+   fi
 }
 
 # Function zipping environment
