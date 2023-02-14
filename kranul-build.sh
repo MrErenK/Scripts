@@ -33,6 +33,7 @@ if [ ! -d "${ClangPath}" ]; then
   cd ${ClangPath}
   curl -LO "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman"
   chmod +x antman && ./antman -S
+  cd ..
 fi
 if [ ! -d "${Gcc64Path}" ]; then
   git clone --depth=1 https://github.com/Sepatu-Bot/arm64-gcc ${Gcc64Path}
