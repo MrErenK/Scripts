@@ -30,7 +30,7 @@ ClangPath=${MainClangPath}
 [[ "$(pwd)" != "${MainPath}" ]] && cd "${MainPath}"
 if [ ! -d "${ClangPath}" ]; then
   mkdir ${ClangPath}
-  cd !$
+  cd ${ClangPath}
   curl -LO "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman"
   chmod +x antman && ./antman -S
 fi
