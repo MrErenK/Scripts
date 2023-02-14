@@ -63,6 +63,7 @@ BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 DATE="$(date +"%d.%m.%Y")"
 OSS="R-OSS"
 KERNEL_VARIANT="neutron"
+KERNELSU="yes"
 
 # Function of telegram
 if [ ! -f "${MainPath}/Telegram/telegram" ]; then
@@ -105,6 +106,7 @@ tgm "
 <b>• COMPILER :</b> <code>${KBUILD_COMPILER_STRING}</code>
 <b>• OSS VERSION :</b> <code>${OSS}</code>
 <b>• KERNEL VARIANT :</b> <code>${KERNEL_VARIANT}</code>
+<b>• KERNELSU :</b> <code>${KERNELSU}</code>
 <b>===========================================</b>
 "
 
@@ -151,6 +153,19 @@ function cleanup() {
     sudo rm -rf anykernel/
 }
 
+function kernelsu() {
+    if [ "$KERNELSU" = "yes" ];then
+      cd ${MainPath}
+      curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
+      echo "CONFIG_KPROBES=y" >> arch/${ARCH}/configs/${DEVICE_DEFCONFIG}
+      echo "CONFIG_HAVE_KPROBES=y" >> arch/${ARCH}/configs/${DEVICE_DEFCONFIG}
+      echo "CONFIG_KPROBE_EVENTS=y" >> arch/${ARCH}/configs/${DEVICE_DEFCONFIG}
+      echo "CONFIG_OVERLAY_FS=y" >> arch/${ARCH}/configs/${DEVICE_DEFCONFIG}
+      KERNEL_VARIANT="${KERNEL_VARIANT}-KernelSU"
+    fi
+}
+
+kernelsu
 compile
 zipping
 END=$(date +"%s")
