@@ -28,8 +28,9 @@ AnyKernelPath="${MainPath}/anykernel"
 ClangPath=${MainClangPath}
 [[ "$(pwd)" != "${MainPath}" ]] && cd "${MainPath}"
 mkdir ${ClangPath}
-wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/master/clang-r450784e.tar.gz -O "aosp-clang.tar.gz"
-tar -xf aosp-clang.tar.gz -C ${ClangPath} && rm -rf aosp-clang.tar.gz
+cd !$
+curl -LO "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman"
+chmod +x antman && ./antman -S
 git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 -b lineage-19.1 ${Gcc64Path}
 git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9 -b lineage-19.1 ${Gcc32Path}
 
