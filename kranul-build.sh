@@ -112,8 +112,15 @@ tgm "⚙️ <i>Compilation has been started</i>"
 compile(){
 make O=out ARCH=arm64 $DEVICE_DEFCONFIG
 make -j"$CORES" ARCH=arm64 O=out \
+    CC=clang \
+    LD=ld.lld \
     LLVM=1 \
     LLVM_IAS=1 \
+    AR=llvm-ar \
+    NM=llvm-nm \
+    OBJCOPY=llvm-objcopy \
+    OBJDUMP=llvm-objdump \
+    STRIP=llvm-strip \
     CROSS_COMPILE=aarch64-linux-android- \
     CROSS_COMPILE_ARM32=arm-linux-androideabi- \
     2>&1 | tee "${BUILD_LOG}"
