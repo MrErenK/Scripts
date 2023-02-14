@@ -42,7 +42,6 @@ fi
 
 # Toolchain setup
 export PATH="${ClangPath}/bin:${Gcc64Path}/bin:${Gcc32Path}/bin:${PATH}"
-export LD_LIBRARY_PATH="${ClangPath}/lib64:${LD_LIBRARY_PATH}"
 export KBUILD_COMPILER_STRING="$(${ClangPath}/bin/clang --version | head -n 1)"
 
 # Enviromental variable
@@ -115,7 +114,6 @@ make O=out ARCH=arm64 $DEVICE_DEFCONFIG
 make -j"$CORES" ARCH=arm64 O=out \
     LLVM=1 \
     LLVM_IAS=1 \
-    CLANG_TRIPLE=aarch64-linux-gnu- \
     CROSS_COMPILE=aarch64-linux-android- \
     CROSS_COMPILE_ARM32=arm-linux-androideabi- \
     2>&1 | tee "${BUILD_LOG}"
