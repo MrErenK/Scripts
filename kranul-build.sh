@@ -27,12 +27,18 @@ AnyKernelPath="${MainPath}/anykernel"
 # Clone toolchain
 ClangPath=${MainClangPath}
 [[ "$(pwd)" != "${MainPath}" ]] && cd "${MainPath}"
-mkdir ${ClangPath}
-cd !$
-curl -LO "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman"
-chmod +x antman && ./antman -S
-git clone --depth=1 https://github.com/Sepatu-Bot/arm64-gcc ${Gcc64Path}
-git clone --depth=1 https://github.com/Sepatu-Bot/gcc-arm ${Gcc32Path}
+if [ ! -d "${ClangPath}" ]; then
+  mkdir ${ClangPath}
+  cd !$
+  curl -LO "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman"
+  chmod +x antman && ./antman -S
+fi
+if [ ! -d "${Gcc64Path}" ]; then
+  git clone --depth=1 https://github.com/Sepatu-Bot/arm64-gcc ${Gcc64Path}
+fi
+if [ ! -d "${Gcc32Path}" ]; then
+  git clone --depth=1 https://github.com/Sepatu-Bot/gcc-arm ${Gcc32Path}
+fi
 
 # Toolchain setup
 export PATH="${ClangPath}/bin:${Gcc64Path}/bin:${Gcc32Path}/bin:${PATH}"
