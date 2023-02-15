@@ -17,7 +17,7 @@
 # Personal script for kranul compilation !!
 
 # Path
-MainPath="$(pwd)"
+MainPath="$(readlink -f -- $(pwd))"
 MainClangPath="${MainPath}/clang"
 ClangPath="${MainClangPath}"
 Gcc64Path="${MainPath}/gcc64"
