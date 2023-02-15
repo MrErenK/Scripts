@@ -149,9 +149,8 @@ function zipping() {
 
 function cleanup() {
     cd ${MainPath}
-    make mrproper
     sudo rm -rf anykernel/
-    sudo rm -rf out/arch/arm64/boot/*
+    sudo rm -rf out/
 }
 
 function kernelsu() {
