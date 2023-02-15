@@ -63,7 +63,7 @@ BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 DATE="$(date +"%d.%m.%Y")"
 OSS="R-OSS"
 KERNEL_VARIANT="neutron"
-KERNELSU="yes"
+KERNELSU="no"
 
 # Function of telegram
 if [ ! -f "${MainPath}/Telegram/telegram" ]; then
