@@ -126,8 +126,8 @@ make -j"$CORES" ARCH=arm64 O=out \
     OBJDUMP=llvm-objdump \
     STRIP=llvm-strip \
     CLANG_TRIPLE=aarch64-linux-gnu- \
-    CROSS_COMPILE=aarch64-linux-android- \
-    CROSS_COMPILE_ARM32=arm-linux-androideabi- \
+    CROSS_COMPILE="${Gcc64Path}/bin/"aarch64-elf- \
+    CROSS_COMPILE_ARM32="${Gcc32Path}/bin/"arm-eabi- \
     2>&1 | tee "${BUILD_LOG}"
 
    if [[ -f "$IMAGE" ]]; then
