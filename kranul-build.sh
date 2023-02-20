@@ -52,7 +52,7 @@ IMAGE="${MainPath}/out/arch/arm64/boot/Image.gz-dtb"
 BUILD_LOG="${MainPath}/out/log-${STARTTIME}.txt"
 CORES="$(nproc --all)"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-DATE="$(date +"%d.%m.%Y")"
+DATE="$(date +%d-%m-%y.%H.%M)"
 OSS="R-OSS"
 KERNEL_VARIANT="Neutron"
 KERNELSU="no"
@@ -135,7 +135,7 @@ make -j"$CORES" ARCH=arm64 O=out \
 function zipping() {
     cd ${AnyKernelPath} || exit 1
     sed -i "s/kernel.string=.*/kernel.string=${KERNEL_NAME}-${KERNEL_VARIANT} by ${KBUILD_BUILD_USER}/g" anykernel.sh
-    zip -r9 ${KERNEL_NAME}-${KERNEL_VARIANT}-${DEVICE_CODENAME}-${OSS}.zip * -x .git README.md *placeholder
+    zip -r9 ${KERNEL_NAME}-${KERNEL_VARIANT}-${DEVICE_CODENAME}-${OSS}-${DATE}.zip * -x .git README.md *placeholder
     cd ..
 }
 
