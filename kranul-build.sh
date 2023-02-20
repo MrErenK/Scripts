@@ -20,8 +20,6 @@
 MainPath="$(readlink -f -- $(pwd))"
 MainClangPath="${MainPath}/clang"
 ClangPath="${MainClangPath}"
-Gcc64Path="${MainPath}/gcc64"
-Gcc32Path="${MainPath}/gcc32"
 AnyKernelPath="${MainPath}/anykernel"
 STARTTIME="$(TZ='Asia/Jakarta' date +%H%M)"
 
@@ -35,15 +33,9 @@ if [ ! -f "${ClangPath}/bin/clang" ]; then
   chmod +x antman && ./antman -S
   cd ..
 fi
-if [ ! -f "${Gcc64Path}/bin/aarch64-elf-gcc" ]; then
-  git clone --depth=1 https://github.com/Sepatu-Bot/arm64-gcc ${Gcc64Path}
-fi
-if [ ! -f "${Gcc32Path}/bin/arm-eabi-gcc" ]; then
-  git clone --depth=1 https://github.com/Sepatu-Bot/gcc-arm ${Gcc32Path}
-fi
 
 # Toolchain setup
-export PATH="${ClangPath}/bin:${Gcc64Path}/bin:${Gcc32Path}/bin:${PATH}"
+export PATH="${ClangPath}/bin:${PATH}"
 export KBUILD_COMPILER_STRING="$(${ClangPath}/bin/clang --version | head -n 1)"
 
 # Enviromental variable
@@ -62,7 +54,7 @@ CORES="$(nproc --all)"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 DATE="$(date +"%d.%m.%Y")"
 OSS="R-OSS"
-KERNEL_VARIANT="neutron"
+KERNEL_VARIANT="Neutron"
 KERNELSU="no"
 
 # Function of telegram
@@ -126,8 +118,8 @@ make -j"$CORES" ARCH=arm64 O=out \
     OBJDUMP=llvm-objdump \
     STRIP=llvm-strip \
     CLANG_TRIPLE=aarch64-linux-gnu- \
-    CROSS_COMPILE="${Gcc64Path}/bin/"aarch64-elf- \
-    CROSS_COMPILE_ARM32="${Gcc32Path}/bin/"arm-eabi- \
+    CROSS_COMPILE=aarch64-linux-gnu- \
+    CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
     2>&1 | tee "${BUILD_LOG}"
 
    if [[ -f "$IMAGE" ]]; then
