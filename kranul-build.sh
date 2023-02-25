@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Copyright (C) 2022 Neebe3289 <neebexd@gmail.com>
+# Copyright (C) 2022-2023 Neebe3289 <neebexd@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
