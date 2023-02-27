@@ -83,6 +83,7 @@ function push() {
     cd ${AnyKernelPath}
     ZIP=$(echo *.zip)
     tgf "$ZIP" "✅ Compile took $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s). Cleaning workspace..."
+    tgf "$BUILD_LOG" "Here is the build log if you want to check warnings etc."
     cleanup
 }
 
