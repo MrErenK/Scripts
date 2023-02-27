@@ -124,6 +124,8 @@ make -j"$CORES" ARCH=arm64 O=out \
     2>&1 | tee "${BUILD_LOG}"
 
    if [[ -f "$IMAGE" ]]; then
+      cd ${MainPath}
+      cp out/.config arch/${ARCH}/configs/${DEVICE_DEFCONFIG}
       git clone --depth=1 https://github.com/Neebe3289/AnyKernel3 -b begonia-r-oss ${AnyKernelPath}
       cp $IMAGE ${AnyKernelPath}
    else
