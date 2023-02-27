@@ -138,7 +138,7 @@ make -j"$CORES" ARCH=arm64 O=out \
 function zipping() {
     cd ${AnyKernelPath} || exit 1
     sed -i "s/kernel.string=.*/kernel.string=${KERNEL_NAME}-${SUBLEVEL}-${KERNEL_VARIANT} by ${KBUILD_BUILD_USER}/g" anykernel.sh
-    zip -r9 "[${KERNEL_VARIANT}]"${KERNEL_NAME}-${SUBLEVEL}-${DEVICE_CODENAME}-${OSS}-${DATE}.zip * -x .git README.md *placeholder
+    zip -r9 "[${KERNEL_VARIANT}]"-${KERNEL_NAME}-${SUBLEVEL}-${DEVICE_CODENAME}-${OSS}-${DATE}.zip * -x .git README.md *placeholder
     cd ..
 }
 
