@@ -53,7 +53,7 @@ BUILD_LOG="${MainPath}/out/log-${STARTTIME}.txt"
 CORES="$(nproc --all)"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 DATE="$(date +%H.%M-%d.%m)"
-OSS="R-OSS"
+OSS="R"
 KERNEL_VARIANT="Neutron"
 KERNELSU="no"
 
