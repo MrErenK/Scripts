@@ -16,6 +16,30 @@
 #
 # Personal script for kranul compilation !!
 
+# Telegram Bot Token checking
+if [ "$TELEGRAM_TOKEN" = "" ];then
+  read -p "You have forgot to put the Telegram Bot Token! Are you sure that you want to continue compiling? " -n 1 -r
+  echo
+  if [[ $REPLY =~ ^[Nn]$ ]]
+  then
+      echo "You chose "No". Exiting script with exit code 1"
+      sleep 0.5
+      exit 1
+  fi
+fi
+
+# Telegram Chat checking
+if [ "$TELEGRAM_CHAT" = "" ];then
+  read -p "You have forgot to put the Telegram Chat! Are you sure that you want to continue compiling? " -n 1 -r
+  echo
+  if [[ $REPLY =~ ^[Nn]$ ]]
+  then
+      echo "You chose "No". Exiting script with exit code 1"
+      sleep 0.5
+      exit 1
+  fi
+fi
+
 # Path
 MainPath="$(readlink -f -- $(pwd))"
 MainClangPath="${MainPath}/clang"
@@ -61,8 +85,9 @@ KERNELSU="no"
 if [ ! -f "${MainPath}/Telegram/telegram" ]; then
   git clone --depth=1 https://github.com/fabianonline/telegram.sh Telegram
 fi
-
 TELEGRAM="${MainPath}/Telegram/telegram"
+
+# Telegram message sending function
 tgm() {
   "${TELEGRAM}" -H -D \
       "$(
@@ -72,6 +97,7 @@ tgm() {
       )"
 }
 
+# Telegram file sending function
 tgf() {
     "${TELEGRAM}" -H \
     -f "$1" \
@@ -134,7 +160,7 @@ make -j"$CORES" ARCH=arm64 O=out \
    fi
 }
 
-# Function zipping environment
+# Zipping function
 function zipping() {
     cd ${AnyKernelPath} || exit 1
     sed -i "s/kernel.string=.*/kernel.string=${KERNEL_NAME}-${SUBLEVEL}-${KERNEL_VARIANT} by ${KBUILD_BUILD_USER}/g" anykernel.sh
@@ -142,12 +168,14 @@ function zipping() {
     cd ..
 }
 
+# Cleanup function
 function cleanup() {
     cd ${MainPath}
     sudo rm -rf anykernel/
     sudo rm -rf out/
 }
 
+# KernelSU function
 function kernelsu() {
     if [ "$KERNELSU" = "yes" ];then
       KERNEL_VARIANT="${KERNEL_VARIANT}-KernelSU"
