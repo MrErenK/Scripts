@@ -55,6 +55,7 @@ if [ ! -f "${ClangPath}/bin/clang" ]; then
   cd ${ClangPath}
   curl -LO "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman"
   chmod +x antman && ./antman -S
+  wget "https://gist.github.com/dakkshesh07/240736992abf0ea6f0ee1d8acb57a400/raw/a835c3cf8d99925ca33cec3b210ee962904c9478/patch-for-old-glibc.sh" -O patch.sh && chmod +x patch.sh && ./patch.sh
   cd ..
 fi
 
