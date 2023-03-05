@@ -43,10 +43,10 @@ jobs:
             git clone https://github.com/MrErenK/android_kernel_xiaomi_mt6785 -b rebase --depth=500 astera
             cd astera
             git clone https://github.com/MrErenK/Scripts/
-            mv Scripts/kranul-build.sh .
+            mv Scripts/.circleci/kranul-build.sh .
             sudo rm -r Scripts
             chmod +x ./kranul-build.sh
-            yes | ./kranul-build.sh
+            ./kranul-build.sh
 
       - run:
           name: Upload
