@@ -122,7 +122,6 @@ tgm "
 <b>• LINUX VERSION :</b> <code>${SUBLEVEL}</code>
 <b>• BRANCH NAME :</b> <code>${BRANCH}</code>
 <b>• COMPILER :</b> <code>${KBUILD_COMPILER_STRING}</code>
-<b>• OSS VERSION :</b> <code>${OSS}</code>
 <b>• KERNEL VARIANT :</b> <code>${KERNEL_VARIANT}</code>
 <b>• KERNELSU :</b> <code>${KERNELSU}</code>
 <b>===========================================</b>
