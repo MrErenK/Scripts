@@ -169,6 +169,8 @@ function zipping() {
 # Cleanup function
 function cleanup() {
     cd ${MainPath}
+    mkdir builds
+    mv anykernel/*.zip ./builds
     sudo rm -rf anykernel/
     sudo rm -rf out/
 }
