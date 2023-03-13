@@ -74,7 +74,6 @@ export KBUILD_BUILD_HOST="kernel"
 export KERNEL_NAME="$(cat "arch/arm64/configs/$DEVICE_DEFCONFIG" | grep "CONFIG_LOCALVERSION=" | sed 's/CONFIG_LOCALVERSION="-*//g' | sed 's/"*//g' )"
 export SUBLEVEL="v4.14.$(cat "${MainPath}/Makefile" | grep "SUBLEVEL =" | sed 's/SUBLEVEL = *//g')"
 IMAGE="${MainPath}/out/arch/arm64/boot/Image.gz-dtb"
-BUILD_LOG="${MainPath}/out/log-${STARTTIME}.txt"
 CORES="$(nproc --all)"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 KERNEL_VARIANT="Neutron"
@@ -108,7 +107,6 @@ function push() {
     cd ${AnyKernelPath}
     ZIP=$(echo *.zip)
     tgf "$ZIP" "✅ Compile took $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s). Cleaning workspace..."
-    tgf "$BUILD_LOG" "Here is the build log if you want to check warnings etc."
     cleanup
 }
 
@@ -144,8 +142,7 @@ make -j"$CORES" ARCH=arm64 O=out \
     STRIP=llvm-strip \
     CLANG_TRIPLE=aarch64-linux-gnu- \
     CROSS_COMPILE=aarch64-linux-gnu- \
-    CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-    2>&1 | tee "${BUILD_LOG}"
+    CROSS_COMPILE_ARM32=arm-linux-gnueabi-
 
    if [[ -f "$IMAGE" ]]; then
       cd ${MainPath}
@@ -153,7 +150,7 @@ make -j"$CORES" ARCH=arm64 O=out \
       git clone --depth=1 https://github.com/Neebe3289/AnyKernel3 -b begonia-r-oss ${AnyKernelPath}
       cp $IMAGE ${AnyKernelPath}
    else
-      tgf "$BUILD_LOG" "<i> ❌ Compile Kernel for $DEVICE_CODENAME failed, Check build log to fix it!</i>"
+      tgm "<i> ❌ Compile Kernel for $DEVICE_CODENAME failed, Check console log to fix it!</i>"
       exit 1
    fi
 }
@@ -169,7 +166,7 @@ function zipping() {
 # Cleanup function
 function cleanup() {
     cd ${MainPath}
-    mkdir builds
+    mkdir -p builds
     mv anykernel/*.zip ./builds
     sudo rm -rf anykernel/
     sudo rm -rf out/
