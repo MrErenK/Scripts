@@ -16,6 +16,9 @@
 #
 # Personal script for kranul compilation !!
 
+# Load variables from config.env
+export $(grep -v '^#' config.env | xargs)
+
 # Telegram Bot Token checking
 if [ "$TELEGRAM_TOKEN" = "" ];then
   read -p "You have forgot to put the Telegram Bot Token! Are you sure that you want to continue compiling? " -n 1 -r
@@ -43,27 +46,84 @@ fi
 # Path
 MainPath="$(readlink -f -- $(pwd))"
 MainClangPath="${MainPath}/clang"
-ClangPath="${MainClangPath}"
 AnyKernelPath="${MainPath}/anykernel"
-STARTTIME="$(TZ='Asia/Jakarta' date +%H%M)"
+CrossCompileFlagTriple="aarch64-linux-gnu-"
+CrossCompileFlag64="aarch64-linux-gnu-"
+CrossCompileFlag32="arm-linux-gnueabi-"
 
 # Clone toolchain
-ClangPath=${MainClangPath}
 [[ "$(pwd)" != "${MainPath}" ]] && cd "${MainPath}"
-if [ ! -f "${ClangPath}/bin/clang" ]; then
-  mkdir ${ClangPath}
-  cd ${ClangPath}
-  curl -LO "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman"
-  chmod +x antman && ./antman -S
-  ./antman --patch=glibc
-  cd ..
-fi
-
-# Toolchain setup
-export PATH="${ClangPath}/bin:${PATH}"
-export KBUILD_COMPILER_STRING="$(${ClangPath}/bin/clang --version | head -n 1)"
+function getclang() {
+  if [ "${ClangName}" = "azure" ]; then
+    if [ ! -f "${MainClangPath}-azure/bin/clang" ]; then
+      echo "[!] Clang is set to azure, cloning it..."
+      git clone https://gitlab.com/Panchajanya1999/azure-clang clang-azure --depth=1
+      ClangPath="${MainClangPath}"-azure
+      export PATH="${ClangPath}/bin:${PATH}"
+      cd ${ClangPath}
+      wget "https://gist.github.com/dakkshesh07/240736992abf0ea6f0ee1d8acb57a400/raw/a835c3cf8d99925ca33cec3b210ee962904c9478/patch-for-old-glibc.sh" -O patch.sh && chmod +x patch.sh && ./patch.sh
+      cd ..
+    else
+      echo "[!] Clang already exists. Skipping..."
+      ClangPath="${MainClangPath}"-azure
+      export PATH="${ClangPath}/bin:${PATH}"
+    fi
+  elif [ "${ClangName}" = "neutron" ] || [ "${ClangName}" = "" ]; then
+    if [ ! -f "${MainClangPath}-neutron/bin/clang" ]; then
+      echo "[!] Clang is set to neutron, cloning it..."
+      mkdir -p "${MainClangPath}"-neutron
+      ClangPath="${MainClangPath}"-neutron
+      export PATH="${ClangPath}/bin:${PATH}"
+      cd ${ClangPath}
+      curl -LO "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman"
+      chmod +x antman && ./antman -S
+      ./antman --patch=glibc
+      cd ..
+    else
+      echo "[!] Clang already exists. Skipping..."
+      ClangPath="${MainClangPath}"-neutron
+      export PATH="${ClangPath}/bin:${PATH}"
+    fi
+  elif [ "${ClangName}" = "proton" ]; then
+    if [ ! -f "${MainClangPath}-proton/bin/clang" ]; then
+      echo "[!] Clang is set to proton, cloning it..."
+      git clone https://github.com/kdrag0n/proton-clang clang-proton --depth=1
+      ClangPath="${MainClangPath}"-proton
+      export PATH="${ClangPath}/bin:${PATH}"
+    else
+      echo "[!] Clang already exists. Skipping..."
+      ClangPath="${MainClangPath}"-proton
+      export PATH="${ClangPath}/bin:${PATH}"
+    fi
+  elif [ "${ClangName}" = "zyc" ]; then
+    if [ ! -f "${MainClangPath}-zyc/bin/clang" ]; then
+      echo "[!] Clang is set to zyc, cloning it..."
+      mkdir -p ${MainClangPath}-zyc
+      cd clang-zyc
+      wget -q $(curl https://raw.githubusercontent.com/ZyCromerZ/Clang/main/Clang-main-link.txt 2>/dev/null) -O "zyc-clang.tar.gz"
+      tar -xf zyc-clang.tar.gz
+      ClangPath="${MainClangPath}"-zyc
+      export PATH="${ClangPath}/bin:${PATH}"
+      rm -f zyc-clang.tar.gz
+      cd ..
+    else
+      echo "[!] Clang already exists. Skipping..."
+      ClangPath="${MainClangPath}"-zyc
+      export PATH="${ClangPath}/bin:${PATH}"
+    fi
+  else
+    echo "[!] Incorrect clang name. Check config.env for clang names."
+    exit 1
+  fi
+  if [ ! -f '${MainClangPath}-${ClangName}/bin/clang' ]; then
+    export KBUILD_COMPILER_STRING="$(${MainClangPath}-${ClangName}/bin/clang --version | head -n 1)"
+  else
+    export KBUILD_COMPILER_STRING="Unknown"
+  fi
+}
 
 # Enviromental variable
+STARTTIME="$(TZ='Asia/Jakarta' date +%H%M)"
 export TZ="Asia/Jakarta"
 DEVICE_MODEL="Redmi Note 8 Pro"
 DEVICE_CODENAME="begonia"
@@ -76,8 +136,6 @@ export SUBLEVEL="v4.14.$(cat "${MainPath}/Makefile" | grep "SUBLEVEL =" | sed 's
 IMAGE="${MainPath}/out/arch/arm64/boot/Image.gz-dtb"
 CORES="$(nproc --all)"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-KERNEL_VARIANT="Neutron"
-KERNELSU="no"
 
 # Function of telegram
 if [ ! -f "${MainPath}/Telegram/telegram" ]; then
@@ -111,24 +169,32 @@ function push() {
 }
 
 # Send info build to telegram channel
-tgm "
-⚙ <i>Compilation has been started</i>
-<b>===========================================</b>
-<b>• DATE :</b> <code>$(TZ=Asia/Jakarta date +"%A, %d %b %Y, %H:%M:%S")</code>
-<b>• DEVICE :</b> <code>${DEVICE_MODEL} ($DEVICE_CODENAME)</code>
-<b>• KERNEL NAME :</b> <code>${KERNEL_NAME}</code>
-<b>• LINUX VERSION :</b> <code>${SUBLEVEL}</code>
-<b>• BRANCH NAME :</b> <code>${BRANCH}</code>
-<b>• COMPILER :</b> <code>${KBUILD_COMPILER_STRING}</code>
-<b>• KERNEL VARIANT :</b> <code>${KERNEL_VARIANT}</code>
-<b>• KERNELSU :</b> <code>${KERNELSU}</code>
-<b>===========================================</b>
-"
+function sendinfo(){
+  tgm "
+  ⚙ <i>Compilation has been started</i>
+  <b>===========================================</b>
+  <b>• DATE :</b> <code>$(TZ=Asia/Jakarta date +"%A, %d %b %Y, %H:%M:%S")</code>
+  <b>• DEVICE :</b> <code>${DEVICE_MODEL} ($DEVICE_CODENAME)</code>
+  <b>• KERNEL NAME :</b> <code>${KERNEL_NAME}</code>
+  <b>• LINUX VERSION :</b> <code>${SUBLEVEL}</code>
+  <b>• BRANCH NAME :</b> <code>${BRANCH}</code>
+  <b>• COMPILER :</b> <code>${KBUILD_COMPILER_STRING}</code>
+  <b>• KERNEL VARIANT :</b> <code>${KERNEL_VARIANT}</code>
+  <b>• KERNELSU :</b> <code>${KERNELSU}</code>
+  <b>===========================================</b>
+  "
+}
 
 # Start Compile
 START=$(date +"%s")
 
 compile(){
+if [ "$ClangName" = "proton" ]; then
+  sed -i 's/CONFIG_LLVM_POLLY=y/# CONFIG_LLVM_POLLY is not set/g' arch/arm64/configs/begonia_user_defconfig || echo ""
+else
+  sed -i 's/# CONFIG_LLVM_POLLY is not set/CONFIG_LLVM_POLLY=y/g' arch/arm64/configs/begonia_user_defconfig || echo ""
+fi
+sendinfo
 make O=out ARCH=arm64 $DEVICE_DEFCONFIG
 make -j"$CORES" ARCH=arm64 O=out \
     CC=clang \
@@ -140,9 +206,9 @@ make -j"$CORES" ARCH=arm64 O=out \
     OBJCOPY=llvm-objcopy \
     OBJDUMP=llvm-objdump \
     STRIP=llvm-strip \
-    CLANG_TRIPLE=aarch64-linux-gnu- \
-    CROSS_COMPILE=aarch64-linux-gnu- \
-    CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+    CLANG_TRIPLE=${CrossCompileFlagTriple} \
+    CROSS_COMPILE=${CrossCompileFlag64} \
+    CROSS_COMPILE_ARM32=${CrossCompileFlag32}
 
    if [[ -f "$IMAGE" ]]; then
       cd ${MainPath}
@@ -187,6 +253,7 @@ function kernelsu() {
     fi
 }
 
+getclang
 kernelsu
 compile
 zipping
