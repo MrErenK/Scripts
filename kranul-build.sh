@@ -250,6 +250,7 @@ function kernelsu() {
         echo "CONFIG_KPROBE_EVENTS=y" >> arch/${ARCH}/configs/${DEVICE_DEFCONFIG}
         echo "CONFIG_OVERLAY_FS=y" >> arch/${ARCH}/configs/${DEVICE_DEFCONFIG}
       fi
+      sudo rm -rf KernelSU && git clone https://github.com/tiann/KernelSU
     fi
 }
 
