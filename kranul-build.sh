@@ -169,6 +169,23 @@ function push() {
 }
 
 # Send info build to telegram channel
+function ksusendinfo(){
+  tgm "
+  ⚙ <i>Compilation has been started</i>
+  <b>===========================================</b>
+  <b>• DATE :</b> <code>$(TZ=Asia/Jakarta date +"%A, %d %b %Y, %H:%M:%S")</code>
+  <b>• DEVICE :</b> <code>${DEVICE_MODEL} ($DEVICE_CODENAME)</code>
+  <b>• KERNEL NAME :</b> <code>${KERNEL_NAME}</code>
+  <b>• LINUX VERSION :</b> <code>${SUBLEVEL}</code>
+  <b>• BRANCH NAME :</b> <code>${BRANCH}</code>
+  <b>• COMPILER :</b> <code>${KBUILD_COMPILER_STRING}</code>
+  <b>• KERNEL VARIANT :</b> <code>${KERNEL_VARIANT}</code>
+  <b>• KERNELSU :</b> <code>${KERNELSU}</code>
+  <b>• KERNELSU VERSION :</b> <code>${KERNELSU_VERSION}</code>
+  <b>===========================================</b>
+  "
+}
+
 function sendinfo(){
   tgm "
   ⚙ <i>Compilation has been started</i>
@@ -194,7 +211,6 @@ if [ "$ClangName" = "proton" ]; then
 else
   sed -i 's/# CONFIG_LLVM_POLLY is not set/CONFIG_LLVM_POLLY=y/g' arch/arm64/configs/begonia_user_defconfig || echo ""
 fi
-sendinfo
 make O=out ARCH=arm64 $DEVICE_DEFCONFIG
 make -j"$CORES" ARCH=arm64 O=out \
     CC=clang \
@@ -217,6 +233,7 @@ make -j"$CORES" ARCH=arm64 O=out \
       cp $IMAGE ${AnyKernelPath}
    else
       tgm "<i> ❌ Compile Kernel for $DEVICE_CODENAME failed, Check console log to fix it!</i>"
+      cleanup
       exit 1
    fi
 }
@@ -242,6 +259,7 @@ function cleanup() {
 function kernelsu() {
     if [ "$KERNELSU" = "yes" ];then
       KERNEL_VARIANT="${KERNEL_VARIANT}-KernelSU"
+      KERNELSU_VERSION="$((10000 + $(cd KernelSU && git rev-list --count HEAD) + 200))"
       if [ ! -f "${MainPath}/KernelSU/README.md" ]; then
         cd ${MainPath}
         curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
@@ -251,6 +269,9 @@ function kernelsu() {
         echo "CONFIG_OVERLAY_FS=y" >> arch/${ARCH}/configs/${DEVICE_DEFCONFIG}
       fi
       sudo rm -rf KernelSU && git clone https://github.com/tiann/KernelSU
+      ksusendinfo
+    else
+      sendinfo
     fi
 }
 
@@ -261,4 +282,3 @@ zipping
 END=$(date +"%s")
 DIFF=$(($END - $START))
 push
-
