@@ -122,6 +122,44 @@ function getclang() {
   fi
 }
 
+function updateclang() {
+  [[ "$(pwd)" != "${MainPath}" ]] && cd "${MainPath}"
+  if [ "${ClangName}" = "neutron" ] || [ "${ClangName}" = "" ]; then
+    echo "[!] Clang is set to neutron, checking for updates..."
+    cd $clang-neutron
+    if [ "$(./antman -U | grep "Nothing to do")" = "" ];then
+      ./antman --patch=glibc
+    else
+      echo "[!] No updates have been found, skipping"
+    fi
+    cd ..
+    elif [ "${ClangName}" = "zyc" ]; then
+      echo "[!] Clang is set to zyc, checking for updates..."
+      cd clang-zyc
+      ZycLatest="$(curl https://raw.githubusercontent.com/ZyCromerZ/Clang/main/Clang-main-lastbuild.txt)"
+      if [ "$(cat README.md | grep "Build Date : " | cut -d: -f2 | sed "s/ //g")" != "${ZycLatest}" ];then
+        echo "[!] An update have been found, updating..."
+        sudo rm -rf ./*
+        wget -q $(curl https://raw.githubusercontent.com/ZyCromerZ/Clang/main/Clang-main-link.txt 2>/dev/null) -O "zyc-clang.tar.gz"
+        tar -xf zyc-clang.tar.gz
+        rm -f zyc-clang.tar.gz
+      else
+        echo "[!] No updates have been found, skipping..."
+      fi
+      cd ..
+    elif [ "${ClangName}" = "azure" ]; then
+      cd clang-azure
+      git fetch -q origin main
+      git pull origin main
+      cd ..
+    elif [ "${ClangName}" = "proton" ]; then
+      cd clang-proton
+      git fetch -q origin master
+      git pull origin master
+      cd ..
+  fi
+}
+
 # Enviromental variable
 STARTTIME="$(TZ='Asia/Jakarta' date +%H%M)"
 export TZ="Asia/Jakarta"
@@ -207,12 +245,12 @@ START=$(date +"%s")
 
 compile(){
 if [ "$ClangName" = "proton" ]; then
-  sed -i 's/CONFIG_LLVM_POLLY=y/# CONFIG_LLVM_POLLY is not set/g' arch/arm64/configs/begonia_user_defconfig || echo ""
+  sed -i 's/CONFIG_LLVM_POLLY=y/# CONFIG_LLVM_POLLY is not set/g' ${MainPath}/arch/$ARCH/configs/$DEVICE_DEFCONFIG || echo ""
 else
-  sed -i 's/# CONFIG_LLVM_POLLY is not set/CONFIG_LLVM_POLLY=y/g' arch/arm64/configs/begonia_user_defconfig || echo ""
+  sed -i 's/# CONFIG_LLVM_POLLY is not set/CONFIG_LLVM_POLLY=y/g' ${MainPath}/arch/$ARCH/configs/$DEVICE_DEFCONFIG || echo ""
 fi
-make O=out ARCH=arm64 $DEVICE_DEFCONFIG
-make -j"$CORES" ARCH=arm64 O=out \
+make O=out ARCH=$ARCH $DEVICE_DEFCONFIG
+make -j"$CORES" ARCH=$ARCH O=out \
     CC=clang \
     LD=ld.lld \
     LLVM=1 \
@@ -241,7 +279,7 @@ make -j"$CORES" ARCH=arm64 O=out \
 # Zipping function
 function zipping() {
     cd ${AnyKernelPath} || exit 1
-    sed -i "s/kernel.string=.*/kernel.string=${KERNEL_NAME}-${SUBLEVEL}-${KERNEL_VARIANT} by ${KBUILD_BUILD_USER}/g" anykernel.sh
+    sed -i "s/kernel.string=.*/kernel.string=${KERNEL_NAME}-${SUBLEVEL}-${KERNEL_VARIANT} by ${KBUILD_BUILD_USER} for ${DEVICE_MODEL}-${DEVICE_CODENAME}/g" anykernel.sh
     zip -r9 "[${KERNEL_VARIANT}]"-${KERNEL_NAME}-${SUBLEVEL}-${DEVICE_CODENAME}.zip * -x .git README.md *placeholder
     cd ..
 }
@@ -276,6 +314,7 @@ function kernelsu() {
 }
 
 getclang
+updateclang
 kernelsu
 compile
 zipping
