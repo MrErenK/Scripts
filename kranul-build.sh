@@ -21,26 +21,16 @@ export $(grep -v '^#' config.env | xargs)
 
 # Telegram Bot Token checking
 if [ "$TELEGRAM_TOKEN" = "" ];then
-  read -p "You have forgot to put the Telegram Bot Token! Are you sure that you want to continue compiling? " -n 1 -r
-  echo
-  if [[ $REPLY =~ ^[Nn]$ ]]
-  then
-      echo "You chose "No". Exiting script with exit code 1"
-      sleep 0.5
-      exit 1
-  fi
+  echo "You have forgot to put the Telegram Bot Token! Aborting..."
+  sleep 0.5
+  exit 1
 fi
 
 # Telegram Chat checking
 if [ "$TELEGRAM_CHAT" = "" ];then
-  read -p "You have forgot to put the Telegram Chat! Are you sure that you want to continue compiling? " -n 1 -r
-  echo
-  if [[ $REPLY =~ ^[Nn]$ ]]
-  then
-      echo "You chose "No". Exiting script with exit code 1"
-      sleep 0.5
-      exit 1
-  fi
+  echo "You have forgot to put the Telegram Chat ID! Aborting..."
+  sleep 0.5
+  exit 1
 fi
 
 # Path
@@ -126,7 +116,7 @@ function updateclang() {
   [[ "$(pwd)" != "${MainPath}" ]] && cd "${MainPath}"
   if [ "${ClangName}" = "neutron" ] || [ "${ClangName}" = "" ]; then
     echo "[!] Clang is set to neutron, checking for updates..."
-    cd $clang-neutron
+    cd clang-neutron
     if [ "$(./antman -U | grep "Nothing to do")" = "" ];then
       ./antman --patch=glibc
     else
@@ -174,6 +164,8 @@ export SUBLEVEL="v4.14.$(cat "${MainPath}/Makefile" | grep "SUBLEVEL =" | sed 's
 IMAGE="${MainPath}/out/arch/arm64/boot/Image.gz-dtb"
 CORES="$(nproc --all)"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+SEND_ANNOUNCEMENT="yes"
+DATE="$(date +%H.%M-%d.%m)"
 
 # Function of telegram
 if [ ! -f "${MainPath}/Telegram/telegram" ]; then
@@ -193,17 +185,78 @@ tgm() {
 
 # Telegram file sending function
 tgf() {
-    "${TELEGRAM}" -H \
-    -f "$1" \
-    "$2"
+  "${TELEGRAM}" -H \
+  -f "$1" \
+  "$2"
+}
+
+tgannounce() {
+  "${TELEGRAM}" -c ${TELEGRAM_CHANNEL} -H \
+  -f "$1" \
+  "$2"
 }
 
 # Function for uploaded kernel file
 function push() {
-    cd ${AnyKernelPath}
-    ZIP=$(echo *.zip)
-    tgf "$ZIP" "✅ Compile took $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s). Cleaning workspace..."
+  cd ${AnyKernelPath}
+  ZIP=$(echo *.zip)
+  tgf "$ZIP" "✅ Compile took $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s)."
+  sleep 3
+  if [ "${SEND_ANNOUNCEMENT}" = "yes" ];then
+    sendannouncement
+  else
     cleanup
+  fi
+}
+
+function sendannouncement(){
+  if [ "$TELEGRAM_CHANNEL" = "" ];then
+    echo "You have forgot to put the Telegram Channel ID, so can't send the announcement! Aborting..." 
+    sleep 0.5
+    exit 1
+  fi
+  if [ "$KERNELSU" = "yes" ];then
+    ksuannounce
+  else
+    announce
+  fi
+}
+
+function announce() {
+  cd ${AnyKernelPath}
+  ZIP=$(echo *.zip)
+  tgannounce "$ZIP" "
+📢 | <i>New kernel build!</i>
+
+<b>• DATE :</b> <code>$(TZ=Asia/Jakarta date +"%A, %d %b %Y, %H:%M:%S")</code>
+<b>• DEVICE :</b> <code>${DEVICE_MODEL} ($DEVICE_CODENAME)</code>
+<b>• KERNEL NAME :</b> <code>${KERNEL_NAME}</code>
+<b>• KERNEL LINUX VERSION :</b> <code>${SUBLEVEL}</code>
+<b>• KERNEL VARIANT :</b> <code>${KERNEL_VARIANT}</code>
+<b>• KERNELSU :</b> <code>${KERNELSU}</code>
+
+<i>Compilation took $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s)</i>
+"
+  cleanup
+}
+
+function ksuannounce() {
+  cd ${AnyKernelPath}
+  ZIP=$(echo *.zip)
+  tgannounce "$ZIP" "
+📢 | <i>New kernel build!</i>
+
+<b>• DATE :</b> <code>$(TZ=Asia/Jakarta date +"%A, %d %b %Y, %H:%M:%S")</code>
+<b>• DEVICE :</b> <code>${DEVICE_MODEL} ($DEVICE_CODENAME)</code>
+<b>• KERNEL NAME :</b> <code>${KERNEL_NAME}</code>
+<b>• KERNEL LINUX VERSION :</b> <code>${SUBLEVEL}</code>
+<b>• KERNEL VARIANT :</b> <code>${KERNEL_VARIANT}</code>
+<b>• KERNELSU :</b> <code>${KERNELSU}</code>
+<b>• KERNELSU VERSION :</b> <code>${KERNELSU_VERSION}</code>
+
+<i>Compilation took $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s)</i>
+"
+  cleanup
 }
 
 # Send info build to telegram channel
@@ -214,7 +267,7 @@ function ksusendinfo(){
   <b>• DATE :</b> <code>$(TZ=Asia/Jakarta date +"%A, %d %b %Y, %H:%M:%S")</code>
   <b>• DEVICE :</b> <code>${DEVICE_MODEL} ($DEVICE_CODENAME)</code>
   <b>• KERNEL NAME :</b> <code>${KERNEL_NAME}</code>
-  <b>• LINUX VERSION :</b> <code>${SUBLEVEL}</code>
+  <b>• KERNEL LINUX VERSION :</b> <code>${SUBLEVEL}</code>
   <b>• BRANCH NAME :</b> <code>${BRANCH}</code>
   <b>• COMPILER :</b> <code>${KBUILD_COMPILER_STRING}</code>
   <b>• KERNEL VARIANT :</b> <code>${KERNEL_VARIANT}</code>
@@ -231,7 +284,7 @@ function sendinfo(){
   <b>• DATE :</b> <code>$(TZ=Asia/Jakarta date +"%A, %d %b %Y, %H:%M:%S")</code>
   <b>• DEVICE :</b> <code>${DEVICE_MODEL} ($DEVICE_CODENAME)</code>
   <b>• KERNEL NAME :</b> <code>${KERNEL_NAME}</code>
-  <b>• LINUX VERSION :</b> <code>${SUBLEVEL}</code>
+  <b>• KERNEL LINUX VERSION :</b> <code>${SUBLEVEL}</code>
   <b>• BRANCH NAME :</b> <code>${BRANCH}</code>
   <b>• COMPILER :</b> <code>${KBUILD_COMPILER_STRING}</code>
   <b>• KERNEL VARIANT :</b> <code>${KERNEL_VARIANT}</code>
@@ -288,7 +341,8 @@ function zipping() {
 function cleanup() {
     cd ${MainPath}
     mkdir -p builds
-    mv anykernel/*.zip ./builds
+    zipname="$(echo *.zip | sed "s/.zip//g")"
+    mv anykernel/*.zip ./builds/${zipname}-$DATE.zip
     sudo rm -rf anykernel/
     sudo rm -rf out/
 }
