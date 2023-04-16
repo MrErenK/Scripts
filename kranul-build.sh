@@ -164,7 +164,6 @@ export SUBLEVEL="v4.14.$(cat "${MainPath}/Makefile" | grep "SUBLEVEL =" | sed 's
 IMAGE="${MainPath}/out/arch/arm64/boot/Image.gz-dtb"
 CORES="$(nproc --all)"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-SEND_ANNOUNCEMENT="yes"
 DATE="$(date +%H.%M-%d.%m)"
 
 # Function of telegram
