@@ -342,14 +342,14 @@ function zipping() {
     sed -i "s/kernel.string=.*/kernel.string=${KERNEL_NAME}-${SUBLEVEL}-${KERNEL_VARIANT} by ${KBUILD_BUILD_USER} for ${DEVICE_MODEL}-${DEVICE_CODENAME}/g" anykernel.sh
     zip -r9 "[${KERNEL_VARIANT}]"-${KERNEL_NAME}-${SUBLEVEL}-${DEVICE_CODENAME}.zip * -x .git README.md *placeholder
     cd ..
+    mkdir -p builds
+    zipname="$(basename $(echo ${AnyKernelPath}/*.zip | sed "s/.zip//g"))"
+    mv anykernel/*.zip ./builds/${zipname}-$DATE.zip
 }
 
 # Cleanup function
 function cleanup() {
     cd ${MainPath}
-    mkdir -p builds
-    zipname="$(basename $(echo ${AnyKernelPath}/*.zip | sed "s/.zip//g"))"
-    mv anykernel/*.zip ./builds/${zipname}-$DATE.zip
     sudo rm -rf ${AnyKernelPath}
     sudo rm -rf out/
 }
