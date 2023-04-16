@@ -205,7 +205,9 @@ function push() {
   if [ "${SEND_ANNOUNCEMENT}" = "yes" ];then
     sendannouncement
   else
-    cleanup
+    if [ "$CLEANUP" = "yes" ];then
+      cleanup
+    fi
   fi
 }
 
@@ -237,7 +239,9 @@ function announce() {
 
 <i>Compilation took $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s)</i>
 "
-  cleanup
+  if [ "$CLEANUP" = "yes" ];then
+    cleanup
+  fi
 }
 
 function ksuannounce() {
@@ -256,7 +260,9 @@ function ksuannounce() {
 
 <i>Compilation took $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s)</i>
 "
-  cleanup
+  if [ "$CLEANUP" = "yes" ];then
+    cleanup
+  fi
 }
 
 # Send info build to telegram channel
@@ -324,7 +330,9 @@ make -j"$CORES" ARCH=$ARCH O=out \
       cp $IMAGE ${AnyKernelPath}
    else
       tgm "<i> ❌ Compile Kernel for $DEVICE_CODENAME failed, Check console log to fix it!</i>"
-      cleanup
+      if [ "$CLEANUP" = "yes" ];then
+        cleanup
+      fi
       exit 1
    fi
 }
