@@ -341,7 +341,7 @@ function zipping() {
 function cleanup() {
     cd ${MainPath}
     mkdir -p builds
-    zipname="$(echo ${AnyKernelPath}/*.zip | sed "s/.zip//g")"
+    zipname="$(basename $(echo ${AnyKernelPath}/*.zip | sed "s/.zip//g"))"
     mv anykernel/*.zip ./builds/${zipname}-$DATE.zip
     sudo rm -rf ${AnyKernelPath}
     sudo rm -rf out/
