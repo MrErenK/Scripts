@@ -344,7 +344,7 @@ function zipping() {
     cd ..
     mkdir -p builds
     zipname="$(basename $(echo ${AnyKernelPath}/*.zip | sed "s/.zip//g"))"
-    mv anykernel/*.zip ./builds/${zipname}-$DATE.zip
+    cp ${AnyKernelPath}/*.zip ./builds/${zipname}-$DATE.zip
 }
 
 # Cleanup function
