@@ -339,7 +339,7 @@ make -j"$CORES" ARCH=$ARCH O=out \
 # Zipping function
 function zipping() {
     cd ${AnyKernelPath} || exit 1
-    sed -i "s/kernel.string=.*/kernel.string=${KERNEL_NAME}-${SUBLEVEL}-${KERNEL_VARIANT} by ${KBUILD_BUILD_USER} for ${DEVICE_MODEL}-${DEVICE_CODENAME}/g" anykernel.sh
+    sed -i "s/kernel.string=.*/kernel.string=${KERNEL_NAME}-${SUBLEVEL}-${KERNEL_VARIANT} by ${KBUILD_BUILD_USER} for ${DEVICE_MODEL} (${DEVICE_CODENAME})/g" anykernel.sh
     zip -r9 "[${KERNEL_VARIANT}]"-${KERNEL_NAME}-${SUBLEVEL}-${DEVICE_CODENAME}.zip * -x .git README.md *placeholder
     cd ..
     mkdir -p builds
