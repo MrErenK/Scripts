@@ -65,7 +65,7 @@ function getclang() {
       ClangPath="${MainClangPath}"-neutron
       export PATH="${ClangPath}/bin:${PATH}"
       cd ${ClangPath}
-      curl -LO "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman"
+      curl -LOk "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman"
       chmod +x antman && ./antman -S
       ./antman --patch=glibc
       cd ..
@@ -90,7 +90,7 @@ function getclang() {
       echo "[!] Clang is set to zyc, cloning it..."
       mkdir -p ${MainClangPath}-zyc
       cd clang-zyc
-      wget -q $(curl https://raw.githubusercontent.com/ZyCromerZ/Clang/main/Clang-main-link.txt 2>/dev/null) -O "zyc-clang.tar.gz"
+      wget -q $(curl -k https://raw.githubusercontent.com/ZyCromerZ/Clang/main/Clang-main-link.txt 2>/dev/null) -O "zyc-clang.tar.gz"
       tar -xf zyc-clang.tar.gz
       ClangPath="${MainClangPath}"-zyc
       export PATH="${ClangPath}/bin:${PATH}"
@@ -126,11 +126,11 @@ function updateclang() {
     elif [ "${ClangName}" = "zyc" ]; then
       echo "[!] Clang is set to zyc, checking for updates..."
       cd clang-zyc
-      ZycLatest="$(curl https://raw.githubusercontent.com/ZyCromerZ/Clang/main/Clang-main-lastbuild.txt)"
+      ZycLatest="$(curl -k https://raw.githubusercontent.com/ZyCromerZ/Clang/main/Clang-main-lastbuild.txt)"
       if [ "$(cat README.md | grep "Build Date : " | cut -d: -f2 | sed "s/ //g")" != "${ZycLatest}" ];then
         echo "[!] An update have been found, updating..."
         sudo rm -rf ./*
-        wget -q $(curl https://raw.githubusercontent.com/ZyCromerZ/Clang/main/Clang-main-link.txt 2>/dev/null) -O "zyc-clang.tar.gz"
+        wget -q $(curl -k https://raw.githubusercontent.com/ZyCromerZ/Clang/main/Clang-main-link.txt 2>/dev/null) -O "zyc-clang.tar.gz"
         tar -xf zyc-clang.tar.gz
         rm -f zyc-clang.tar.gz
       else
@@ -364,7 +364,7 @@ function kernelsu() {
       KERNEL_VARIANT="${KERNEL_VARIANT}-KernelSU"
       if [ ! -f "${MainPath}/KernelSU/README.md" ]; then
         cd ${MainPath}
-        curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
+        curl -LSsk "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
         git apply KSU.patch
       fi
       KERNELSU_VERSION="$((10000 + $(cd KernelSU && git rev-list --count HEAD) + 200))"
