@@ -325,7 +325,7 @@ make -j"$CORES" ARCH=$ARCH O=out \
    if [[ -f "$IMAGE" ]]; then
       cd ${MainPath}
       cp out/.config arch/${ARCH}/configs/${DEVICE_DEFCONFIG} && git add arch/${ARCH}/configs/${DEVICE_DEFCONFIG} && git commit -m "defconfig: Regenerate"
-      git clone --depth=1 https://github.com/Neebe3289/AnyKernel3 -b begonia-r-oss ${AnyKernelPath}
+      git clone --depth=1 https://github.com/Neebe3289/AnyKernel3 -b begonia ${AnyKernelPath}
       cp $IMAGE ${AnyKernelPath}
    else
       tgm "<i> ❌ Compile Kernel for $DEVICE_CODENAME failed, Check console log to fix it!</i>"
