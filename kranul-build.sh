@@ -362,7 +362,6 @@ function cleanup() {
 function kernelsu() {
     if [ "$KERNELSU" = "yes" ];then
       KERNEL_VARIANT="${KERNEL_VARIANT}-KernelSU"
-      KERNELSU_VERSION="$((10000 + $(cd KernelSU && git rev-list --count HEAD) + 200))"
       if [ ! -f "${MainPath}/KernelSU/README.md" ]; then
         cd ${MainPath}
         curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
@@ -371,6 +370,7 @@ function kernelsu() {
         echo "CONFIG_KPROBE_EVENTS=y" >> arch/${ARCH}/configs/${DEVICE_DEFCONFIG}
         echo "CONFIG_OVERLAY_FS=y" >> arch/${ARCH}/configs/${DEVICE_DEFCONFIG}
       fi
+      KERNELSU_VERSION="$((10000 + $(cd KernelSU && git rev-list --count HEAD) + 200))"
       sudo rm -rf KernelSU && git clone https://github.com/tiann/KernelSU
       ksusendinfo
     else
