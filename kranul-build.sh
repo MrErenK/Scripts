@@ -368,7 +368,7 @@ function kernelsu() {
         git apply KSU.patch
       fi
       KERNELSU_VERSION="$((10000 + $(cd KernelSU && git rev-list --count HEAD) + 200))"
-      sudo rm -rf KernelSU && git clone https://github.com/tiann/KernelSU
+      git submodule update --init; cd ${MainPath}/KernelSU; git pull origin main; cd ..
       ksusendinfo
     else
       sendinfo
