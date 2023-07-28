@@ -2,7 +2,7 @@
 
 *To build kernel*:
 - Clone kernel source & cd into it
-- Clone this repo and move config.env & kranul-build.sh to main kernel source path
+- Clone this repo and move config.env, kranul-build.sh and KSU.patch to main kernel source path
 - Check config.env, do your changes and run kranul-build.sh
 
 *To use setup aosp env script*:
