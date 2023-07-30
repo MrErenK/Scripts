@@ -575,7 +575,10 @@ compile_kernel()
       BuildLog=$(echo build.log)
       send_file "${BuildLog}" "Successfully compiled the kernel! Here is the log if you want to check for what's going on."
     fi
-    regen_config
+    if [ "${RegenerateDefconfig}" = "yes" ]
+    then
+      regen_config
+    fi
     clone_anykernel
     cp "${Image}" "${AnyKernelPath}"
   fi
