@@ -470,6 +470,7 @@ cleanup() {
     sudo rm -rf out/
 }
 
+# Function to automatically regenerate defconfig
 regen_config()
 {
   cd ${MainPath}
@@ -477,7 +478,6 @@ regen_config()
   git add arch/${DeviceArch}/configs/${DefConfig}
   git commit -m "defconfig: Regenerate"
 }
-
 
 #####################
 # Begin compilation #
@@ -491,6 +491,7 @@ compile_kernel()
   # The time when compilation have started
   StartTime="$(date +"%s")"
 
+  # Send info to telegram chat
   if [ "${KERNELSU}" = "yes" ]
   then
     ksusendinfo
@@ -498,6 +499,7 @@ compile_kernel()
     sendinfo
   fi
 
+  # Disable LLVM POLLY on proton clang
   if [ "${ClangName}" = "proton" ]
   then
     sed -i 's/CONFIG_LLVM_POLLY=y/# CONFIG_LLVM_POLLY is not set/g' ${MainPath}/arch/${DeviceArch}/configs/${DefConfig} || echo ""
@@ -505,6 +507,7 @@ compile_kernel()
     sed -i 's/# CONFIG_LLVM_POLLY is not set/CONFIG_LLVM_POLLY=y/g' ${MainPath}/arch/${DeviceArch}/configs/${DefConfig} || echo ""
   fi
 
+  # Use different make command for aosp and yuki clang
   if [ "${ClangName}" = "aosp" ] || [ "${ClangName}" = "yuki" ]
   then
     MAKE+=(
@@ -538,6 +541,7 @@ compile_kernel()
     )
   fi
 
+  # Begin to compile
   msg "Compilation has been started.."
   make O=out ARCH=${DeviceArch} ${DefConfig}
 
@@ -550,6 +554,7 @@ compile_kernel()
       "${MAKE[@]}" 2>&1 | tee build.log
   fi
 
+  # Copy and notice the chosen Image
   if [[ ! -f "${Image}" ]]
   then
     if [ "${GenBuildLog}" = "yes" ]
@@ -576,6 +581,7 @@ compile_kernel()
   fi
 }
 
+# Calling functions
 clone_clang
 export_variables
 update_clang
