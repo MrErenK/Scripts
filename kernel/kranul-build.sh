@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
 # Copyright (C) 2022-2023 Neebe3289 <neebexd@gmail.com>
+# Copyright (C) 2023 MrErenK <akbaseren4751@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,166 +15,288 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Personal script for kranul compilation !!
+# A bash script to build Android Kernel
+# Inspired from Panchajanya1999's script
+#
 
 # Load variables from config.env
-export $(grep -v '^#' config.env | xargs)
+source config.env
 
-# Telegram Bot Token checking
-if [ "$TELEGRAM_TOKEN" = "" ];then
-  echo "You have forgot to put the Telegram Bot Token! Aborting..."
-  sleep 0.5
+# Functions to show informational message
+msg()
+{
+  echo -e "\e[1;32m$*\e[0m"
+}
+
+err()
+{
+  echo -e "\e[1;31m$*\e[0m"
+}
+
+# Check Telegram variables
+if [ -z "$TELEGRAM_TOKEN" ] || [ -z "$TELEGRAM_CHAT" ]
+then
+  if [ -z "$TELEGRAM_TOKEN" ]; then
+    err "Missing environment variable: TELEGRAM_TOKEN! Please check and edit the configuration file."
+  fi
+  if [ -z "$TELEGRAM_CHAT" ]; then
+    err "Missing environment variable: TELEGRAM_CHAT! Please check and edit the configuration file."
+  fi
   exit 1
 fi
 
-# Telegram Chat checking
-if [ "$TELEGRAM_CHAT" = "" ];then
-  echo "You have forgot to put the Telegram Chat ID! Aborting..."
-  sleep 0.5
-  exit 1
-fi
+###############
+# Basic Setup #
+###############
 
-# Path
+# Current branch of the kernel
+Branch="$(git rev-parse --abbrev-ref HEAD)"
+
+# Current date
+Date="$(date +%H.%M-%d.%m)"
+
+# Full path of current path
 MainPath="$(readlink -f -- $(pwd))"
-MainClangPath="${MainPath}/clang"
-AnyKernelPath="${MainPath}/anykernel"
-CrossCompileFlagTriple="aarch64-linux-gnu-"
-CrossCompileFlag64="aarch64-linux-gnu-"
-CrossCompileFlag32="arm-linux-gnueabi-"
 
-# Clone toolchain
-[[ "$(pwd)" != "${MainPath}" ]] && cd "${MainPath}"
-function getclang() {
-  if [ "${ClangName}" = "azure" ]; then
-    if [ ! -f "${MainClangPath}-azure/bin/clang" ]; then
-      echo "[!] Clang is set to azure, cloning it..."
-      git clone https://gitlab.com/Panchajanya1999/azure-clang clang-azure --depth=1
-      ClangPath="${MainClangPath}"-azure
-      export PATH="${ClangPath}/bin:${PATH}"
-      cd ${ClangPath}
-      wget "https://gist.github.com/dakkshesh07/240736992abf0ea6f0ee1d8acb57a400/raw/a835c3cf8d99925ca33cec3b210ee962904c9478/patch-for-old-glibc.sh" -O patch.sh && chmod +x patch.sh && ./patch.sh
-      cd ..
-    else
-      echo "[!] Clang already exists. Skipping..."
-      ClangPath="${MainClangPath}"-azure
-      export PATH="${ClangPath}/bin:${PATH}"
+# AnyKernel3 path
+AnyKernelPath="${MainPath}/anykernel"
+
+# Image to put to the zip
+Image="${MainPath}/out/arch/arm64/boot/Image.gz-dtb"
+
+# Kernel name
+KernelName="$(cat "arch/arm64/configs/${DefConfig}" | grep "CONFIG_LOCALVERSION=" | sed 's/CONFIG_LOCALVERSION="-*//g' | sed 's/"*//g' )"
+
+# Kernel sublevell
+Sublevel="v4.14.$(cat "${MainPath}/Makefile" | grep "SUBLEVEL =" | sed 's/SUBLEVEL = *//g')"
+
+# Main clang path
+MainClangPath="${MainPath}/clang"
+
+# Setup variables
+export_variables()
+{
+  # Available cores to compile the kernel
+  AvailabeCores="$(nproc --all)"
+
+  # Kernel build user and host
+  KBUILD_BUILD_USER="${USER}"
+  KBUILD_BUILD_HOST="${HOSTNAME}"
+
+  # Timezone
+  TZ="Europe/Istanbul"
+
+  if [ "${ClangName}" = "azure" ] || [ "${ClangName}" = "neutron" ] || [ "{$ClangName}" = "proton" ] || [ "${ClangName}" = "zyc" ]
+  then
+    ClangPath="${MainPath}"/clang-${ClangName}
+    PATH=${ClangPath}/bin:$PATH
+    KBUILD_COMPILER_STRING="$(${ClangPath}/bin/clang --version | head -n 1)"
+    COMPILER="${KBUILD_COMPILER_STRING}"
+  elif [ "${ClangName}" = "aosp" ] || [ "${ClangName}" = "yuki" ]
+  then
+    ClangPath="${MainPath}"/clang-${ClangName}
+    PATH=${ClangPath}/bin:${MainPath}/gcc32/bin:${MainPath}/gcc64/bin:$PATH
+    LD_LIBRARY_PATH=${ClangPath}/lib:$LD_LIBRARY_PATH
+    KBUILD_COMPILER_STRING="$(${ClangPath}/bin/clang --version | head -n 1)"
+    COMPILER="${KBUILD_COMPILER_STRING}"
+  fi
+
+  export AnyKernelPath AvailableCores ClangPath COMPILER KBUILD_BUILD_USER KBUILD_BUILD_HOST KBUILD_COMPILER_STRING PATH TZ
+}
+
+# Function to clone anykernel
+clone_anykernel()
+{
+  git clone --depth=1 "${AnyKernelRepo}" -b "${AnyKernelBranch}" "${AnyKernelPath}"
+}
+
+# Function to add KernelSU
+add_kernelsu() {
+    if [ "${KERNELSU}" = "yes" ]
+    then
+      [[ "$(pwd)" != "${MainPath}" ]] && cd "${MainPath}"
+      KERNEL_VARIANT="${KERNEL_VARIANT}-KernelSU"
+      if [ ! -f "${MainPath}/KernelSU/README.md" ]
+      then
+        curl -LSsk "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
+        git apply KSU.patch
+      fi
+      KERNELSU_VERSION="$((10000 + $(cd KernelSU && git rev-list --count HEAD) + 200))"
+      git submodule update --init; cd KernelSU; git pull origin main; cd ..
     fi
-  elif [ "${ClangName}" = "neutron" ] || [ "${ClangName}" = "" ]; then
-    if [ ! -f "${MainClangPath}-neutron/bin/clang" ]; then
-      echo "[!] Clang is set to neutron, cloning it..."
-      mkdir -p "${MainClangPath}"-neutron
-      ClangPath="${MainClangPath}"-neutron
-      export PATH="${ClangPath}/bin:${PATH}"
-      cd ${ClangPath}
+}
+
+###################
+# Toolchain setup #
+###################
+
+# Function to clone toolchain
+clone_clang()
+{
+  [[ "$(pwd)" != "${MainPath}" ]] && cd "${MainPath}"
+
+  if [ "${ClangName}" != "aosp" ] && [ "${ClangName}" != "azure" ] && [ "${ClangName}" != "neutron" ] && [ "${ClangName}" != "proton" ] && [ "${ClangName}" != "yuki" ] && [ "${ClangName}" != "zyc" ]
+  then
+    msg "[!] Incorrect clang name. Check config.env for clang names."
+    exit 1
+  elif [ "${ClangName}" = "aosp" ]
+  then
+    msg "[!] Clang is set to aosp, cloning it..."
+    if [ -x "clang-aosp/bin/clang" ]
+    then
+      msg "[-] Clang already exists. skipping"
+    else
+      git clone https://gitlab.com/Neebe3289/android_prebuilts_clang_host_linux-x86.git -b clang-r498229 clang-aosp --depth=1
+      git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 -b lineage-19.1 gcc64
+      git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9 -b lineage-19.1 gcc32
+      patch_glibc
+    fi
+  elif [ "${ClangName}" = "azure" ]
+  then
+    msg "[!] Clang is set to azure, cloning it..."
+    if [ -x "clang-azure/bin/clang" ]
+    then
+      msg "[-] Clang already exists. skipping"
+    else
+      git clone https://gitlab.com/Panchajanya1999/azure-clang clang-azure --depth=1
+      patch_glibc
+    fi
+  elif [ "${ClangName}" = "neutron" ] || [ "${ClangName}" = "" ]
+  then
+    msg "[!] Clang is set to neutron, cloning it..."
+    if [ -x "clang-neutron/bin/clang" ]
+    then
+      msg "[-] Clang already exists. skipping"
+    else
+      mkdir -p clang-neutron; cd clang-neutron
       curl -LOk "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman"
       chmod +x antman && ./antman -S
-      ./antman --patch=glibc
-      cd ..
-    else
-      echo "[!] Clang already exists. Skipping..."
-      ClangPath="${MainClangPath}"-neutron
-      export PATH="${ClangPath}/bin:${PATH}"
+      patch_glibc
     fi
-  elif [ "${ClangName}" = "proton" ]; then
-    if [ ! -f "${MainClangPath}-proton/bin/clang" ]; then
-      echo "[!] Clang is set to proton, cloning it..."
+  elif [ "${ClangName}" = "proton" ]
+  then
+    msg "[!] Clang is set to proton, cloning it..."
+    if [ -x "clang-proton/bin/clang" ]
+    then
+      msg "[-] Clang already exists. skipping"
+    else
       git clone https://github.com/kdrag0n/proton-clang clang-proton --depth=1
-      ClangPath="${MainClangPath}"-proton
-      export PATH="${ClangPath}/bin:${PATH}"
-    else
-      echo "[!] Clang already exists. Skipping..."
-      ClangPath="${MainClangPath}"-proton
-      export PATH="${ClangPath}/bin:${PATH}"
+      patch_glibc
     fi
-  elif [ "${ClangName}" = "zyc" ]; then
-    if [ ! -f "${MainClangPath}-zyc/bin/clang" ]; then
-      echo "[!] Clang is set to zyc, cloning it..."
-      mkdir -p ${MainClangPath}-zyc
-      cd clang-zyc
+  elif [ "${ClangName}" = "yuki" ]
+  then
+    msg "[!] Clang is set to yuki, cloning it..."
+    if [ -x "clang-yuki/bin/clang" ]
+    then
+      msg "[-] Clang already exists. skipping"
+    else
+      git clone https://gitlab.com/TheXPerienceProject/yuki_clang clang-yuki -b "17.0.0" --depth=1
+      git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 -b lineage-19.1 gcc64
+      git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9 -b lineage-19.1 gcc32
+      patch_glibc
+    fi
+  elif [ "${ClangName}" = "zyc" ]
+  then
+    msg "[!] Clang is set to zyc, cloning it..."
+    if [ -x "clang-zyc/bin/clang" ]
+    then
+      msg "[-] Clang already exists. skipping"
+    else
+      mkdir -p clang-zyc; cd clang-zyc
       wget -q $(curl -k https://raw.githubusercontent.com/ZyCromerZ/Clang/main/Clang-main-link.txt 2>/dev/null) -O "zyc-clang.tar.gz"
-      tar -xf zyc-clang.tar.gz
-      ClangPath="${MainClangPath}"-zyc
-      export PATH="${ClangPath}/bin:${PATH}"
-      rm -f zyc-clang.tar.gz
-      cd ..
-    else
-      echo "[!] Clang already exists. Skipping..."
-      ClangPath="${MainClangPath}"-zyc
-      export PATH="${ClangPath}/bin:${PATH}"
+      tar -xf zyc-clang.tar.gz && rm -f zyc-clang.tar.gz
+      patch_glibc
     fi
   else
-    echo "[!] Incorrect clang name. Check config.env for clang names."
-    exit 1
-  fi
-  if [ ! -f '${MainClangPath}-${ClangName}/bin/clang' ]; then
-    export KBUILD_COMPILER_STRING="$(${MainClangPath}-${ClangName}/bin/clang --version | head -n 1)"
-  else
-    export KBUILD_COMPILER_STRING="Unknown"
+    msg "[!] Clang already exists, skipping..."
   fi
 }
 
-function updateclang() {
+# Update clang
+update_clang()
+{
+  # cd info MainPath if not in there
   [[ "$(pwd)" != "${MainPath}" ]] && cd "${MainPath}"
-  if [ "${ClangName}" = "neutron" ] || [ "${ClangName}" = "" ]; then
-    echo "[!] Clang is set to neutron, checking for updates..."
+
+  # Start checking updates by clang name
+  if [ "${ClangName}" = "neutron" ] || [ "${ClangName}" = "" ]
+  then
+    msg "[!] Clang is set to neutron, checking for updates..."
     cd clang-neutron
-    if [ "$(./antman -U | grep "Nothing to do")" = "" ];then
-      ./antman --patch=glibc
+    if [ "$(./antman -U | grep "Nothing to do")" = "" ]
+    then
+      patch_glibc
     else
-      echo "[!] No updates have been found, skipping"
+      msg "[!] No updates have been found, skipping"
     fi
     cd ..
-    elif [ "${ClangName}" = "zyc" ]; then
-      echo "[!] Clang is set to zyc, checking for updates..."
-      cd clang-zyc
-      ZycLatest="$(curl -k https://raw.githubusercontent.com/ZyCromerZ/Clang/main/Clang-main-lastbuild.txt)"
-      if [ "$(cat README.md | grep "Build Date : " | cut -d: -f2 | sed "s/ //g")" != "${ZycLatest}" ];then
-        echo "[!] An update have been found, updating..."
-        sudo rm -rf ./*
-        wget -q $(curl -k https://raw.githubusercontent.com/ZyCromerZ/Clang/main/Clang-main-link.txt 2>/dev/null) -O "zyc-clang.tar.gz"
-        tar -xf zyc-clang.tar.gz
-        rm -f zyc-clang.tar.gz
-      else
-        echo "[!] No updates have been found, skipping..."
-      fi
-      cd ..
-    elif [ "${ClangName}" = "azure" ]; then
-      cd clang-azure
-      git fetch -q origin main
-      git pull origin main
-      cd ..
-    elif [ "${ClangName}" = "proton" ]; then
-      cd clang-proton
-      git fetch -q origin master
-      git pull origin master
-      cd ..
+  elif [ "${ClangName}" = "zyc" ]
+  then
+    msg "[!] Clang is set to zyc, checking for updates..."
+    cd clang-zyc
+    ZycLatest="$(curl -k https://raw.githubusercontent.com/ZyCromerZ/Clang/main/Clang-main-lastbuild.txt)"
+    if [ "$(cat README.md | grep "Build Date : " | cut -d: -f2 | sed "s/ //g")" != "${ZycLatest}" ]
+    then
+      msg "[!] An update have been found, updating..."
+      sudo rm -rf ./*
+      wget -q $(curl -k https://raw.githubusercontent.com/ZyCromerZ/Clang/main/Clang-main-link.txt 2>/dev/null) -O "zyc-clang.tar.gz"
+      tar -xf zyc-clang.tar.gz
+      rm -f zyc-clang.tar.gz
+    else
+      msg "[!] No updates have been found, skipping..."
+    fi
+    cd ..
+  elif [ "${ClangName}" = "azure" ]
+  then
+    cd clang-azure
+    git fetch -q origin main
+    git pull origin main
+    cd ..
+  elif [ "${ClangName}" = "proton" ]
+  then
+    cd clang-proton
+    git fetch -q origin master
+    git pull origin master
+    cd ..
+  elif [ "${ClangName}" = "yuki" ]
+  then
+    cd clang-yuki
+    git fetch -q origin "17.0.0"
+    git pull origin "17.0.0"
+    cd ..
   fi
 }
 
-# Enviromental variable
-STARTTIME="$(TZ='Asia/Jakarta' date +%H%M)"
-export TZ="Asia/Jakarta"
-DEVICE_MODEL="Redmi Note 8 Pro"
-DEVICE_CODENAME="begonia"
-export DEVICE_DEFCONFIG="begonia_user_defconfig"
-export ARCH="arm64"
-export KBUILD_BUILD_USER="EreN"
-export KBUILD_BUILD_HOST="kernel"
-export KERNEL_NAME="$(cat "arch/arm64/configs/$DEVICE_DEFCONFIG" | grep "CONFIG_LOCALVERSION=" | sed 's/CONFIG_LOCALVERSION="-*//g' | sed 's/"*//g' )"
-export SUBLEVEL="v4.14.$(cat "${MainPath}/Makefile" | grep "SUBLEVEL =" | sed 's/SUBLEVEL = *//g')"
-IMAGE="${MainPath}/out/arch/arm64/boot/Image.gz-dtb"
-CORES="$(nproc --all)"
-BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-DATE="$(date +%H.%M-%d.%m)"
+# Patch glibc to prevent glibc version related errors
+patch_glibc()
+{
+  if [ ${ClangName} = "neutron" ]
+  then
+    ./antman --patch=glibc
+    cd ..
+  else
+    cd ${ClangPath}
+    curl -LOk "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman"
+    chmod +x antman
+    ./antman --patch=glibc
+    cd ..
+  fi
+}
 
-# Function of telegram
-if [ ! -f "${MainPath}/Telegram/telegram" ]; then
+##################
+# Telegram Setup #
+##################
+
+# Clone and set Telegram script
+if [ ! -f "${MainPath}/Telegram/telegram" ]
+then
   git clone --depth=1 https://github.com/fabianonline/telegram.sh Telegram
 fi
-TELEGRAM="${MainPath}/Telegram/telegram"
+TELEGRAM=${MainPath}/Telegram/telegram
 
-# Telegram message sending function
-tgm() {
+# Function to send telegram messages
+send_msg()
+{
   "${TELEGRAM}" -H -D \
       "$(
           for POST in "${@}"; do
@@ -182,99 +305,122 @@ tgm() {
       )"
 }
 
-# Telegram file sending function
-tgf() {
+# Function to upload files to telegram
+send_file()
+{
   "${TELEGRAM}" -H \
   -f "$1" \
   "$2"
 }
 
-tgannounce() {
+# Function to push announcements to telegram
+send_announcement() {
   "${TELEGRAM}" -c ${TELEGRAM_CHANNEL} -H \
   -f "$1" \
   "$2"
 }
 
-# Function for uploaded kernel file
-function push() {
+# Function to upload kernel to telegram
+push()
+{
   cd ${AnyKernelPath}
   ZIP=$(echo *.zip)
-  tgf "$ZIP" "✅ Compile took $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s)."
-  sleep 3
-  if [ "${SEND_ANNOUNCEMENT}" = "yes" ];then
+  SHA1=$(sha1sum "$ZIP" | cut -d' ' -f1)
+  send_file "$ZIP" "✅ Compilation took ${MinsTook} minute(s) and ${SecsTook} second(s). SHA1: ${SHA1}"
+  sleep 1
+  if [ "${SEND_ANNOUNCEMENT}" = "yes" ]
+  then
     sendannouncement
   else
-    if [ "$CLEANUP" = "yes" ];then
+    if [ "${CLEANUP}" = "yes" ]
+    then
       cleanup
     fi
   fi
 }
 
-function sendannouncement(){
-  if [ "$TELEGRAM_CHANNEL" = "" ];then
-    echo "You have forgot to put the Telegram Channel ID, so can't send the announcement! Aborting..." 
+# Function to send announcement to given telegram channel
+sendannouncement()
+{
+  if [ "${TELEGRAM_CHANNEL}" = "" ]
+  then
+    msg "You have forgot to put the Telegram Channel ID, so can't send the announcement! Aborting..." 
     sleep 0.5
     exit 1
   fi
-  if [ "$KERNELSU" = "yes" ];then
+  if [ "${KERNELSU}" = "yes" ]
+  then
     ksuannounce
   else
     announce
   fi
 }
 
-function announce() {
+#################################################
+# Stuffs to run after a successfull compilation #
+#################################################
+
+# Function of sending announcement
+announce()
+{
   cd ${AnyKernelPath}
   ZIP=$(echo *.zip)
-  tgannounce "$ZIP" "
+  send_announcement "$ZIP" "
 📢 | <i>New kernel build!</i>
 
-<b>• DATE :</b> <code>$(TZ=Asia/Jakarta date +"%A, %d %b %Y, %H:%M:%S")</code>
-<b>• DEVICE :</b> <code>${DEVICE_MODEL} ($DEVICE_CODENAME)</code>
-<b>• KERNEL NAME :</b> <code>${KERNEL_NAME}</code>
-<b>• KERNEL LINUX VERSION :</b> <code>${SUBLEVEL}</code>
+<b>• DATE :</b> <code>$(date +"%A, %d %b %Y, %H:%M:%S")</code>
+<b>• DEVICE :</b> <code>$DeviceModel (${DeviceCodename})</code>
+<b>• KERNEL NAME :</b> <code>${KernelName}</code>
+<b>• KERNEL LINUX VERSION :</b> <code>${Sublevel}</code>
 <b>• KERNEL VARIANT :</b> <code>${KERNEL_VARIANT}</code>
 <b>• KERNELSU :</b> <code>${KERNELSU}</code>
+<b>• SHA1 :</b> <code>${SHA1}</code>
 
-<i>Compilation took $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s)</i>
+<i>Compilation took ${MinsTook} minute(s) and ${SecsTook} second(s)</i>
 "
-  if [ "$CLEANUP" = "yes" ];then
+  if [ "${CLEANUP}" = "yes" ]
+  then
     cleanup
   fi
 }
 
-function ksuannounce() {
+# Function of sending announcement (KernelSU variant)
+ksuannounce()
+{
   cd ${AnyKernelPath}
   ZIP=$(echo *.zip)
-  tgannounce "$ZIP" "
+  send_announcement "$ZIP" "
 📢 | <i>New kernel build!</i>
 
-<b>• DATE :</b> <code>$(TZ=Asia/Jakarta date +"%A, %d %b %Y, %H:%M:%S")</code>
-<b>• DEVICE :</b> <code>${DEVICE_MODEL} ($DEVICE_CODENAME)</code>
-<b>• KERNEL NAME :</b> <code>${KERNEL_NAME}</code>
-<b>• KERNEL LINUX VERSION :</b> <code>${SUBLEVEL}</code>
+<b>• DATE :</b> <code>$(date +"%A, %d %b %Y, %H:%M:%S")</code>
+<b>• DEVICE :</b> <code>$DeviceModel (${DeviceCodename})</code>
+<b>• KERNEL NAME :</b> <code>${KernelName}</code>
+<b>• KERNEL LINUX VERSION :</b> <code>${Sublevel}</code>
 <b>• KERNEL VARIANT :</b> <code>${KERNEL_VARIANT}</code>
 <b>• KERNELSU :</b> <code>${KERNELSU}</code>
 <b>• KERNELSU VERSION :</b> <code>${KERNELSU_VERSION}</code>
+<b>• SHA1 :</b> <code>${SHA1}</code>
 
-<i>Compilation took $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s)</i>
+<i>Compilation took ${MinsTook} minute(s) and ${SecsTook} second(s)</i>
 "
-  if [ "$CLEANUP" = "yes" ];then
+  if [ "${CLEANUP}" = "yes" ]
+  then
     cleanup
   fi
 }
 
-# Send info build to telegram channel
-function ksusendinfo(){
-  tgm "
-  ⚙ <i>Compilation has been started</i>
+# Function to send build info to the given telegram chat
+ksusendinfo()
+{
+  send_msg "
+  ⚙ <i>Kernel compilation has been started</i>
   <b>===========================================</b>
-  <b>• DATE :</b> <code>$(TZ=Asia/Jakarta date +"%A, %d %b %Y, %H:%M:%S")</code>
-  <b>• DEVICE :</b> <code>${DEVICE_MODEL} ($DEVICE_CODENAME)</code>
-  <b>• KERNEL NAME :</b> <code>${KERNEL_NAME}</code>
-  <b>• KERNEL LINUX VERSION :</b> <code>${SUBLEVEL}</code>
-  <b>• BRANCH NAME :</b> <code>${BRANCH}</code>
-  <b>• COMPILER :</b> <code>${KBUILD_COMPILER_STRING}</code>
+  <b>• DATE :</b> <code>$(date +"%A, %d %b %Y, %H:%M:%S")</code>
+  <b>• DEVICE :</b> <code>$DeviceModel (${DeviceCodename})</code>
+  <b>• KERNEL NAME :</b> <code>${KernelName}</code>
+  <b>• KERNEL LINUX VERSION :</b> <code>${Sublevel}</code>
+  <b>• BRANCH NAME :</b> <code>${Branch}</code>
+  <b>• COMPILER :</b> <code>${COMPILER}</code>
   <b>• KERNEL VARIANT :</b> <code>${KERNEL_VARIANT}</code>
   <b>• KERNELSU :</b> <code>${KERNELSU}</code>
   <b>• KERNELSU VERSION :</b> <code>${KERNELSU_VERSION}</code>
@@ -282,104 +428,161 @@ function ksusendinfo(){
   "
 }
 
-function sendinfo(){
-  tgm "
-  ⚙ <i>Compilation has been started</i>
+# Function to send build info to the given telegram chat
+sendinfo()
+{
+  send_msg "
+  ⚙ <i>Kernel compilation has been started</i>
   <b>===========================================</b>
-  <b>• DATE :</b> <code>$(TZ=Asia/Jakarta date +"%A, %d %b %Y, %H:%M:%S")</code>
-  <b>• DEVICE :</b> <code>${DEVICE_MODEL} ($DEVICE_CODENAME)</code>
-  <b>• KERNEL NAME :</b> <code>${KERNEL_NAME}</code>
-  <b>• KERNEL LINUX VERSION :</b> <code>${SUBLEVEL}</code>
-  <b>• BRANCH NAME :</b> <code>${BRANCH}</code>
-  <b>• COMPILER :</b> <code>${KBUILD_COMPILER_STRING}</code>
+  <b>• DATE :</b> <code>$(date +"%A, %d %b %Y, %H:%M:%S")</code>
+  <b>• DEVICE :</b> <code>$DeviceModel (${DeviceCodename})</code>
+  <b>• KERNEL NAME :</b> <code>${KernelName}</code>
+  <b>• KERNEL LINUX VERSION :</b> <code>${Sublevel}</code>
+  <b>• BRANCH NAME :</b> <code>${Branch}</code>
+  <b>• COMPILER :</b> <code>${COMPILER}</code>
   <b>• KERNEL VARIANT :</b> <code>${KERNEL_VARIANT}</code>
   <b>• KERNELSU :</b> <code>${KERNELSU}</code>
   <b>===========================================</b>
   "
 }
 
-# Start Compile
-START=$(date +"%s")
-
-compile(){
-if [ "$ClangName" = "proton" ]; then
-  sed -i 's/CONFIG_LLVM_POLLY=y/# CONFIG_LLVM_POLLY is not set/g' ${MainPath}/arch/$ARCH/configs/$DEVICE_DEFCONFIG || echo ""
-else
-  sed -i 's/# CONFIG_LLVM_POLLY is not set/CONFIG_LLVM_POLLY=y/g' ${MainPath}/arch/$ARCH/configs/$DEVICE_DEFCONFIG || echo ""
-fi
-make O=out ARCH=$ARCH $DEVICE_DEFCONFIG
-make -j"$CORES" ARCH=$ARCH O=out \
-    CC=clang \
-    LD=ld.lld \
-    LLVM=1 \
-    LLVM_IAS=1 \
-    AR=llvm-ar \
-    NM=llvm-nm \
-    OBJCOPY=llvm-objcopy \
-    OBJDUMP=llvm-objdump \
-    STRIP=llvm-strip \
-    CLANG_TRIPLE=${CrossCompileFlagTriple} \
-    CROSS_COMPILE=${CrossCompileFlag64} \
-    CROSS_COMPILE_ARM32=${CrossCompileFlag32}
-
-   if [[ -f "$IMAGE" ]]; then
-      cd ${MainPath}
-      cp out/.config arch/${ARCH}/configs/${DEVICE_DEFCONFIG} && git add arch/${ARCH}/configs/${DEVICE_DEFCONFIG} && git commit -m "defconfig: Regenerate"
-      git clone --depth=1 ${AnyKernelRepo} -b ${AnyKernelBranch} ${AnyKernelPath}
-      cp $IMAGE ${AnyKernelPath}
-   else
-      tgm "<i> ❌ Compile Kernel for $DEVICE_CODENAME failed, Check console log to fix it!</i>"
-      if [ "$CLEANUP" = "yes" ];then
-        cleanup
-      fi
-      exit 1
-   fi
-}
-
-# Zipping function
-function zipping() {
+# Function to make a flashable zip
+make_zip()
+{
     cd ${AnyKernelPath} || exit 1
-    if [ "$KERNELSU" = "yes" ];then
-      sed -i "s/kernel.string=.*/kernel.string=${KERNEL_NAME} ${SUBLEVEL} ${KERNEL_VARIANT} by ${KBUILD_BUILD_USER} for ${DEVICE_MODEL} (${DEVICE_CODENAME}) | KernelSU Version: ${KERNELSU_VERSION}/g" anykernel.sh
+    if [ "${KERNELSU}" = "yes" ]
+    then
+      sed -i "s/kernel.string=.*/kernel.string=${KernelName} ${Subleve} ${KERNEL_VARIANT} by ${KBUILD_BUILD_USER} for ${DeviceModel} (${DeviceCodename}) | KernelSU Version: ${KERNELSU_VERSION}/g" anykernel.sh
     else
-      sed -i "s/kernel.string=.*/kernel.string=${KERNEL_NAME} ${SUBLEVEL} ${KERNEL_VARIANT} by ${KBUILD_BUILD_USER} for ${DEVICE_MODEL} (${DEVICE_CODENAME})/g" anykernel.sh
+      sed -i "s/kernel.string=.*/kernel.string=${KernelName} ${Sublevel} ${KERNEL_VARIANT} by ${KBUILD_BUILD_USER} for ${DeviceModel} (${DeviceCodename})/g" anykernel.sh
     fi
-    zip -r9 "[${KERNEL_VARIANT}]"-${KERNEL_NAME}-${SUBLEVEL}-${DEVICE_CODENAME}.zip * -x .git README.md *placeholder
+    zip -r9 "[${KERNEL_VARIANT}]"-${KernelName}-${Sublevel}-${DeviceCodename}.zip * -x .git README.md *placeholder
     cd ..
     mkdir -p builds
     zipname="$(basename $(echo ${AnyKernelPath}/*.zip | sed "s/.zip//g"))"
-    cp ${AnyKernelPath}/*.zip ./builds/${zipname}-$DATE.zip
+    cp ${AnyKernelPath}/*.zip ./builds/${zipname}-${Date}.zip
 }
 
-# Cleanup function
-function cleanup() {
+# Function to cleanup leftovers from previous build
+cleanup() {
     cd ${MainPath}
     sudo rm -rf ${AnyKernelPath}
     sudo rm -rf out/
 }
 
-# KernelSU function
-function kernelsu() {
-    if [ "$KERNELSU" = "yes" ];then
-      KERNEL_VARIANT="${KERNEL_VARIANT}-KernelSU"
-      if [ ! -f "${MainPath}/KernelSU/README.md" ]; then
-        cd ${MainPath}
-        curl -LSsk "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
-        git apply KSU.patch
-      fi
-      KERNELSU_VERSION="$((10000 + $(cd KernelSU && git rev-list --count HEAD) + 200))"
-      git submodule update --init; cd ${MainPath}/KernelSU; git pull origin main; cd ..
-      ksusendinfo
-    else
-      sendinfo
-    fi
+regen_config()
+{
+  cd ${MainPath}
+  cp out/.config arch/${DeviceArch}/configs/${DefConfig}
+  git add arch/${DeviceArch}/configs/${DefConfig}
+  git commit -m "defconfig: Regenerate"
 }
 
-getclang
-updateclang
-kernelsu
-compile
-zipping
-END=$(date +"%s")
-DIFF=$(($END - $START))
+
+#####################
+# Begin compilation #
+#####################
+
+# Function to start compilation of the kernel
+compile_kernel()
+{
+  [[ "$(pwd)" != "${MainPath}" ]] && cd "${MainPath}"
+
+  # The time when compilation have started
+  StartTime="$(date +"%s")"
+
+  if [ "${KERNELSU}" = "yes" ]
+  then
+    ksusendinfo
+  else
+    sendinfo
+  fi
+
+  if [ "${ClangName}" = "proton" ]
+  then
+    sed -i 's/CONFIG_LLVM_POLLY=y/# CONFIG_LLVM_POLLY is not set/g' ${MainPath}/arch/${DeviceArch}/configs/${DefConfig} || echo ""
+  else
+    sed -i 's/# CONFIG_LLVM_POLLY is not set/CONFIG_LLVM_POLLY=y/g' ${MainPath}/arch/${DeviceArch}/configs/${DefConfig} || echo ""
+  fi
+
+  if [ "${ClangName}" = "aosp" ] || [ "${ClangName}" = "yuki" ]
+  then
+    MAKE+=(
+      CC="ccache clang" \
+      LD=ld.lld \
+      LLVM=1 \
+      LLVM_IAS=1 \
+      AR=llvm-ar \
+      NM=llvm-nm \
+      OBJCOPY=llvm-objcopy \
+      OBJDUMP=llvm-objdump \
+      STRIP=llvm-strip \
+      CLANG_TRIPLE=aarch64-linux-gnu- \
+      CROSS_COMPILE=aarch64-linux-android- \
+      CROSS_COMPILE_ARM32=arm-linux-androideabi-
+    )
+  else
+    MAKE+=(
+      CC="ccache clang" \
+      LD=ld.lld \
+      LLVM=1 \
+      LLVM_IAS=1 \
+      AR=llvm-ar \
+      NM=llvm-nm \
+      OBJCOPY=llvm-objcopy \
+      OBJDUMP=llvm-objdump \
+      STRIP=llvm-strip \
+      CLANG_TRIPLE=${CrossCompileFlagTriple} \
+      CROSS_COMPILE=${CrossCompileFlag64} \
+      CROSS_COMPILE_ARM32=${CrossCompileFlag32}
+    )
+  fi
+
+  msg "Compilation has been started.."
+  make O=out ARCH=${DeviceArch} ${DefConfig}
+
+  if [ "${GenBuildLog}" = "yes" ]
+  then
+    make -j"${AvailableCores}" ARCH=${DeviceArch} O=out \
+      "${MAKE[@]}" 2>&1 | tee build.log
+  else
+    make -j"${AvailableCores}" ARCH=${DeviceArch} O=out \
+      "${MAKE[@]}" 2>&1 | tee build.log
+  fi
+
+  if [[ ! -f "${Image}" ]]
+  then
+    if [ "${GenBuildLog}" = "yes" ]
+    then
+      BuildLog=$(echo build.log)
+      err "Failed to compile, check build log to fix it!"
+      send_file "${BuildLog}" "Failed to compile kernel for ${DeviceCodename}, check build log to fix it!"
+    else
+      err "Failed to compile, check console log to fix it!"
+      send_msg "Failed to compile kernel for ${DeviceCodename}, check console log to fix it!"
+    fi
+    cleanup
+    exit 1
+  else
+    msg "Successfully compiled the kernel!"
+    if [ "${GenBuildLog}" = "yes" ]
+    then
+      BuildLog=$(echo build.log)
+      send_file "${BuildLog}" "Successfully compiled the kernel! Here is the log if you want to check for what's going on."
+    fi
+    regen_config
+    clone_anykernel
+    cp "${Image}" "${AnyKernelPath}"
+  fi
+}
+
+clone_clang
+export_variables
+update_clang
+add_kernelsu
+compile_kernel
+make_zip
+EndTime=$(date +"%s")
+MinsTook=$(((${EndTime} - ${StartTime}) / 60))
+SecsTook=$(((${EndTime} - ${StartTime}) % 60))
 push
