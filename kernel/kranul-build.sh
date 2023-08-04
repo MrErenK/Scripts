@@ -62,7 +62,7 @@ MainPath="$(readlink -f -- $(pwd))"
 AnyKernelPath="${MainPath}/anykernel"
 
 # Image to put to the zip
-Image="${MainPath}/out/arch/arm64/boot/Image.gz-dtb"
+Image="${MainPath}/out/arch/arm64/boot/Image.gz"
 
 # Kernel name
 KernelName="$(cat "arch/arm64/configs/${DefConfig}" | grep "CONFIG_LOCALVERSION=" | sed 's/CONFIG_LOCALVERSION="-*//g' | sed 's/"*//g' )"
