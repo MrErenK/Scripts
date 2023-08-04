@@ -248,18 +248,21 @@ update_clang()
     cd ..
   elif [ "${ClangName}" = "azure" ]
   then
+    msg "[!] Clang is set to azure, checking for updates..."
     cd clang-azure
     git fetch -q origin main
     git pull origin main
     cd ..
   elif [ "${ClangName}" = "proton" ]
   then
+    msg "[!] Clang is set to proton, checking for updates..."
     cd clang-proton
     git fetch -q origin master
     git pull origin master
     cd ..
   elif [ "${ClangName}" = "yuki" ]
   then
+    msg "[!] Clang is set to yuki, checking for updates..."
     cd clang-yuki
     git fetch -q origin "17.0.0"
     git pull origin "17.0.0"
@@ -511,7 +514,7 @@ compile_kernel()
   if [ "${ClangName}" = "aosp" ] || [ "${ClangName}" = "yuki" ]
   then
     MAKE+=(
-      CC="ccache clang" \
+      CC=clang \
       LD=ld.lld \
       LLVM=1 \
       LLVM_IAS=1 \
@@ -526,7 +529,7 @@ compile_kernel()
     )
   else
     MAKE+=(
-      CC="ccache clang" \
+      CC=clang \
       LD=ld.lld \
       LLVM=1 \
       LLVM_IAS=1 \
