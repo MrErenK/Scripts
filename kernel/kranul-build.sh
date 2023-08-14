@@ -273,12 +273,12 @@ update_clang()
 # Patch glibc to prevent glibc version related errors
 patch_glibc()
 {
+  cd ${ClangPath}
   if [ ${ClangName} = "neutron" ]
   then
     ./antman --patch=glibc
     cd ..
   else
-    cd ${ClangPath}
     curl -LOk "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman"
     chmod +x antman
     ./antman --patch=glibc
