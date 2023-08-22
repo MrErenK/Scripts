@@ -273,7 +273,7 @@ update_clang()
 # Patch glibc to prevent glibc version related errors
 patch_glibc()
 {
-  cd ${ClangPath}
+  cd ${MainClangPath}-${ClangName}
   if [ ${ClangName} = "neutron" ]
   then
     ./antman --patch=glibc
