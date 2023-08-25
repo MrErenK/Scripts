@@ -328,8 +328,8 @@ push()
 {
   cd ${AnyKernelPath}
   ZIP=$(echo *.zip)
-  SHA1=$(sha1sum "$ZIP" | cut -d' ' -f1)
-  send_file "$ZIP" "✅ Compilation took ${MinsTook} minute(s) and ${SecsTook} second(s). SHA1: ${SHA1}"
+  MD5=$(md5sum "$ZIP" | cut -d' ' -f1)
+  send_file "$ZIP" "✅ Compilation took ${MinsTook} minute(s) and ${SecsTook} second(s). MD5: ${MD5}"
   sleep 1
   if [ "${SEND_ANNOUNCEMENT}" = "yes" ]
   then
@@ -377,7 +377,7 @@ announce()
 <b>• KERNEL LINUX VERSION :</b> <code>${Sublevel}</code>
 <b>• KERNEL VARIANT :</b> <code>${KERNEL_VARIANT}</code>
 <b>• KERNELSU :</b> <code>${KERNELSU}</code>
-<b>• SHA1 :</b> <code>${SHA1}</code>
+<b>• MD5 :</b> <code>${MD5}</code>
 
 <i>Compilation took ${MinsTook} minute(s) and ${SecsTook} second(s)</i>
 "
@@ -402,7 +402,7 @@ ksuannounce()
 <b>• KERNEL VARIANT :</b> <code>${KERNEL_VARIANT}</code>
 <b>• KERNELSU :</b> <code>${KERNELSU}</code>
 <b>• KERNELSU VERSION :</b> <code>${KERNELSU_VERSION}</code>
-<b>• SHA1 :</b> <code>${SHA1}</code>
+<b>• MD5 :</b> <code>${MD5}</code>
 
 <i>Compilation took ${MinsTook} minute(s) and ${SecsTook} second(s)</i>
 "
