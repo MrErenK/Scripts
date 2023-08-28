@@ -19,30 +19,28 @@
 # Inspired from Panchajanya1999's script
 #
 
+# Check if config.env exists
+if [ ! -f "config.env" ]; then
+    err "Error: config.env not found. Please create the configuration file."
+    exit 1
+fi
+
 # Load variables from config.env
 source config.env
 
-# Functions to show informational message
-msg()
-{
-  echo -e "\e[1;32m$*\e[0m"
+# Function to show informational message
+msg() {
+    echo -e "\e[1;32m$*\e[0m"
 }
 
-err()
-{
-  echo -e "\e[1;31m$*\e[0m"
+err() {
+    echo -e "\e[1;31m$*\e[0m"
 }
 
 # Check Telegram variables
-if [ -z "$TELEGRAM_TOKEN" ] || [ -z "$TELEGRAM_CHAT" ]
-then
-  if [ -z "$TELEGRAM_TOKEN" ]; then
-    err "Missing environment variable: TELEGRAM_TOKEN! Please check and edit the configuration file."
-  fi
-  if [ -z "$TELEGRAM_CHAT" ]; then
-    err "Missing environment variable: TELEGRAM_CHAT! Please check and edit the configuration file."
-  fi
-  exit 1
+if [ -z "$TELEGRAM_TOKEN" ] || [ -z "$TELEGRAM_CHAT" ]; then
+    err "Missing environment variable: TELEGRAM_TOKEN or TELEGRAM_CHAT! Please check and edit the configuration file."
+    exit 1
 fi
 
 ###############
@@ -105,9 +103,11 @@ export_variables()
 }
 
 # Function to clone anykernel
-clone_anykernel()
-{
-  git clone --depth=1 "${AnyKernelRepo}" -b "${AnyKernelBranch}" "${AnyKernelPath}"
+clone_anykernel() {
+    if ! git clone --depth=1 "${AnyKernelRepo}" -b "${AnyKernelBranch}" "${AnyKernelPath}"; then
+        err "Failed to clone AnyKernel repository."
+        exit 1
+    fi
 }
 
 # Function to add KernelSU
@@ -544,46 +544,38 @@ compile_kernel()
     )
   fi
 
-  # Begin to compile
   msg "Compilation has been started.."
   make O=out ARCH=${DeviceArch} ${DefConfig}
 
-  if [ "${GenBuildLog}" = "yes" ]
-  then
-    make -j"${AvailableCores}" ARCH=${DeviceArch} O=out \
-      "${MAKE[@]}" 2>&1 | tee build.log
+  if [ "${GenBuildLog}" = "yes" ]; then
+      make -j"${AvailableCores}" ARCH=${DeviceArch} O=out "${MAKE[@]}" 2>&1 | tee build.log
   else
-    make -j"${AvailableCores}" ARCH=${DeviceArch} O=out \
-      "${MAKE[@]}" 2>&1 | tee build.log
+      make -j"${AvailableCores}" ARCH=${DeviceArch} O=out "${MAKE[@]}" 2>&1 | tee build.log
   fi
 
   # Copy and notice the chosen Image
-  if [[ ! -f "${Image}" ]]
-  then
-    if [ "${GenBuildLog}" = "yes" ]
-    then
-      BuildLog=$(echo build.log)
-      err "Failed to compile, check build log to fix it!"
-      send_file "${BuildLog}" "Failed to compile kernel for ${DeviceCodename}, check build log to fix it!"
-    else
-      err "Failed to compile, check console log to fix it!"
-      send_msg "Failed to compile kernel for ${DeviceCodename}, check console log to fix it!"
-    fi
-    cleanup
-    exit 1
+  if [[ ! -f "${Image}" ]]; then
+      if [ "${GenBuildLog}" = "yes" ]; then
+          BuildLog=$(echo build.log)
+          err "Failed to compile, check build log to fix it!"
+          send_file "${BuildLog}" "Failed to compile kernel for ${DeviceCodename}, check build log to fix it!"
+      else
+          err "Failed to compile, check console log to fix it!"
+          send_msg "Failed to compile kernel for ${DeviceCodename}, check console log to fix it!"
+      fi
+      cleanup
+      exit 1
   else
-    msg "Successfully compiled the kernel!"
-    if [ "${GenBuildLog}" = "yes" ]
-    then
-      BuildLog=$(echo build.log)
-      send_file "${BuildLog}" "Successfully compiled the kernel! Here is the log if you want to check for what's going on."
-    fi
-    if [ "${RegenerateDefconfig}" = "yes" ]
-    then
-      regen_config
-    fi
-    clone_anykernel
-    cp "${Image}" "${AnyKernelPath}"
+      msg "Successfully compiled the kernel!"
+      if [ "${GenBuildLog}" = "yes" ]; then
+          BuildLog=$(echo build.log)
+          send_file "${BuildLog}" "Successfully compiled the kernel! Here is the log if you want to check for what's going on."
+      fi
+      if [ "${RegenerateDefconfig}" = "yes" ]; then
+          regen_config
+      fi
+      clone_anykernel
+      cp "${Image}" "${AnyKernelPath}"
   fi
 }
 
