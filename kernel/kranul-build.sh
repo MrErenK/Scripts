@@ -115,7 +115,7 @@ add_kernelsu() {
     if [ "${KERNELSU}" = "yes" ]
     then
       [[ "$(pwd)" != "${MainPath}" ]] && cd "${MainPath}"
-      KERNEL_VARIANT="${KERNEL_VARIANT}-KernelSU"
+      KERNEL_VARIANT="${KERNEL_VARIANT}-KSU"
       if [ ! -f "${MainPath}/KernelSU/README.md" ]
       then
         curl -LSsk "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
@@ -455,7 +455,7 @@ make_zip()
     cd ${AnyKernelPath} || exit 1
     if [ "${KERNELSU}" = "yes" ]
     then
-      sed -i "s/kernel.string=.*/kernel.string=${KernelName} ${Subleve} ${KERNEL_VARIANT} by ${KBUILD_BUILD_USER} for ${DeviceModel} (${DeviceCodename}) | KernelSU Version: ${KERNELSU_VERSION}/g" anykernel.sh
+      sed -i "s/kernel.string=.*/kernel.string=${KernelName} ${Sublevel} ${KERNEL_VARIANT} by ${KBUILD_BUILD_USER} for ${DeviceModel} (${DeviceCodename}) | KernelSU Version: ${KERNELSU_VERSION}/g" anykernel.sh
     else
       sed -i "s/kernel.string=.*/kernel.string=${KernelName} ${Sublevel} ${KERNEL_VARIANT} by ${KBUILD_BUILD_USER} for ${DeviceModel} (${DeviceCodename})/g" anykernel.sh
     fi
@@ -580,8 +580,8 @@ compile_kernel()
 }
 
 # Calling functions
-clone_clang
 export_variables
+clone_clang
 update_clang
 add_kernelsu
 compile_kernel
