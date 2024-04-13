@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Copyright (C) 2022-2023 Neebe3289 <neebexd@gmail.com>
-# Copyright (C) 2023 MrErenK <akbaseren4751@gmail.com>
+# Copyright (C) 2023-2024 MrErenK <akbaseren4751@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,11 +37,39 @@ err() {
     echo -e "\e[1;31m$*\e[0m"
 }
 
-# Check Telegram variables
-if [ -z "$TELEGRAM_TOKEN" ] || [ -z "$TELEGRAM_CHAT" ]; then
-    err "Missing environment variable: TELEGRAM_TOKEN or TELEGRAM_CHAT! Please check and edit the configuration file."
-    exit 1
+# Function to read user input securely
+get_input() {
+    prompt="$1"
+    var_name="$2"
+    while true; do
+        echo -n "$prompt"
+        # Turn off echoing and store input in the given variable name
+        IFS= read -rs "$var_name"
+        # Print a newline after the user input
+        echo
+        # Check if the user input is empty except channel ID
+        if [ -z "${!var_name}" ] && [ "$var_name" != "TELEGRAM_CHANNEL" ]; then
+            err "Error: Input cannot be empty!"
+        else
+            break
+        fi
+    done
+}
+
+# Read Telegram token
+get_input "Enter your bot's Telegram token: " TELEGRAM_TOKEN
+# Read Telegram chat ID
+get_input "Enter the Telegram chat ID to send information: " TELEGRAM_CHAT
+# Read Telegram channel ID for announcements
+get_input "Enter the Telegram channel ID to send announcement: " TELEGRAM_CHANNEL
+
+if [ -z "${TELEGRAM_CHANNEL}" ]; then
+    SEND_ANNOUNCEMENT="no"
+else
+    SEND_ANNOUNCEMENT="yes"
 fi
+
+export TELEGRAM_TOKEN TELEGRAM_CHAT TELEGRAM_CHANNEL
 
 ###############
 # Basic Setup #
@@ -137,7 +165,7 @@ clone_clang()
 
   if [ "${ClangName}" != "aosp" ] && [ "${ClangName}" != "azure" ] && [ "${ClangName}" != "neutron" ] && [ "${ClangName}" != "proton" ] && [ "${ClangName}" != "yuki" ] && [ "${ClangName}" != "zyc" ]
   then
-    msg "[!] Incorrect clang name. Check config.env for clang names."
+    err "[!] Incorrect clang name. Check config.env for clang names."
     exit 1
   elif [ "${ClangName}" = "aosp" ]
   then
@@ -345,12 +373,6 @@ push()
 # Function to send announcement to given telegram channel
 sendannouncement()
 {
-  if [ "${TELEGRAM_CHANNEL}" = "" ]
-  then
-    msg "You have forgot to put the Telegram Channel ID, so can't send the announcement! Aborting..." 
-    sleep 0.5
-    exit 1
-  fi
   if [ "${KERNELSU}" = "yes" ]
   then
     ksuannounce
