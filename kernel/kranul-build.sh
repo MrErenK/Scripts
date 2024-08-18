@@ -189,7 +189,7 @@ add_kernelsu() {
       KERNEL_VARIANT="${KERNEL_VARIANT}-KSU"
       if [ ! -f "${MainPath}/KernelSU/LICENSE" ]
       then
-        curl -LSsk "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
+        curl -LSsk "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s v0.9.5
         git apply ./KSU.patch
       fi
       KERNELSU_VERSION="$((10000 + $(cd KernelSU && git rev-list --count HEAD) + 200))"
