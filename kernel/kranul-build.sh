@@ -63,49 +63,7 @@ get_input "Enter the Telegram chat ID to send information: " TELEGRAM_CHAT
 # Read Telegram channel ID for announcements
 get_input "Enter the Telegram channel ID to send announcement: " TELEGRAM_CHANNEL
 
-# Function to decrypt data
-decrypt_data() {
-    local encrypted_message="$1"
-    local key="$2"
-    echo "$encrypted_message" | openssl enc -aes-256-cbc -d -a -pbkdf2 -iter 1000 -salt -pass pass:"$key"
-}
-
-# Generate a temporary secret key
-SECRET_KEY="$(openssl rand -base64 32)"
-
-# Create an empty file to store the encrypted configs
-rm -f encrypted_configs.env
-touch encrypted_configs.env
-chmod 600 encrypted_configs.env
-
-# Encrypt the Telegram token and chat IDs
-encrypted_telegram_token=$(echo -n "$TELEGRAM_TOKEN" | openssl enc -aes-256-cbc -a -pbkdf2 -iter 1000 -salt -pass pass:"$SECRET_KEY" | tr -d '\n')
-encrypted_telegram_chat=$(echo -n "$TELEGRAM_CHAT" | openssl enc -aes-256-cbc -a -pbkdf2 -iter 1000 -salt -pass pass:"$SECRET_KEY" | tr -d '\n')
-if [ -z "${TELEGRAM_CHANNEL}" ]; then
-    encrypted_telegram_channel=""
-else
-  encrypted_telegram_channel=$(echo -n "$TELEGRAM_CHANNEL" | openssl enc -aes-256-cbc -a -pbkdf2 -iter 1000 -salt -pass pass:"$SECRET_KEY" | tr -d '\n')
-fi
-
-# Store the encrypted Telegram token and chat IDs in the encrypted_configs.env file
-echo "encrypted_telegram_token=$encrypted_telegram_token" >> encrypted_configs.env
-echo "encrypted_telegram_chat=$encrypted_telegram_chat" >> encrypted_configs.env
-if [ -z "${TELEGRAM_CHANNEL}" ]; then
-    encrypted_telegram_channel=""
-else
-  echo "encrypted_telegram_channel=$encrypted_telegram_channel" >> encrypted_configs.env
-fi
-
-# Decrypt the Telegram token and chat IDs
-TELEGRAM_TOKEN="$(decrypt_data "$encrypted_telegram_token" "$SECRET_KEY")"
-TELEGRAM_CHAT="$(decrypt_data "$encrypted_telegram_chat" "$SECRET_KEY")"
-if [ -z "${TELEGRAM_CHANNEL}" ]; then
-    encrypted_telegram_channel=""
-else
-  encrypted_telegram_channel="$(decrypt_data "$encrypted_telegram_channel" "$SECRET_KEY")"
-fi
-
-# Export the decrypted Telegram token and chat IDs
+# Export the Telegram token and chat IDs
 export TELEGRAM_TOKEN TELEGRAM_CHAT TELEGRAM_CHANNEL
 
 if [ -z "${TELEGRAM_CHANNEL}" ]; then
