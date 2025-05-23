@@ -84,18 +84,24 @@ get_input() {
     done
 }
 
-# Read Telegram token
-get_input "Enter your bot's Telegram token: " TELEGRAM_TOKEN
-# Read Telegram chat ID
-get_input "Enter the Telegram chat ID to send information: " TELEGRAM_CHAT
-# Read Telegram channel ID for announcements (optional)
-get_input "Enter the Telegram channel ID to send announcement (optional): " TELEGRAM_CHANNEL 1
-
-# Export the Telegram token and chat IDs
-export TELEGRAM_TOKEN TELEGRAM_CHAT TELEGRAM_CHANNEL
-
-# Set announcement flag based on channel availability
-SEND_ANNOUNCEMENT=$([ -n "${TELEGRAM_CHANNEL}" ] && echo "yes" || echo "no")
+# Read Telegram credentials only if Telegram is enabled
+if [ "${ENABLE_TELEGRAM}" = "yes" ]; then
+    # Read Telegram token
+    get_input "Enter your bot's Telegram token: " TELEGRAM_TOKEN
+    # Read Telegram chat ID
+    get_input "Enter the Telegram chat ID to send information: " TELEGRAM_CHAT
+    # Read Telegram channel ID for announcements (optional)
+    get_input "Enter the Telegram channel ID to send announcement (optional): " TELEGRAM_CHANNEL 1
+    
+    # Export the Telegram token and chat IDs
+    export TELEGRAM_TOKEN TELEGRAM_CHAT TELEGRAM_CHANNEL
+    
+    # Set announcement flag based on channel availability
+    SEND_ANNOUNCEMENT=$([ -n "${TELEGRAM_CHANNEL}" ] && echo "yes" || echo "no")
+else
+    msg "Telegram notifications are disabled."
+    SEND_ANNOUNCEMENT="no"
+fi
 
 ###############
 # Basic Setup #
@@ -407,34 +413,42 @@ patch_glibc() {
 # Telegram Setup #
 ##################
 
-# Clone and set Telegram script
-if [ ! -f "${MainPath}/Telegram/telegram" ]; then
-  git clone --depth=1 https://github.com/fabianonline/telegram.sh Telegram
+# Clone and set Telegram script only if Telegram is enabled
+if [ "${ENABLE_TELEGRAM}" = "yes" ]; then
+    if [ ! -f "${MainPath}/Telegram/telegram" ]; then
+      git clone --depth=1 https://github.com/fabianonline/telegram.sh Telegram
+    fi
+    TELEGRAM="${MainPath}/Telegram/telegram"
 fi
-TELEGRAM="${MainPath}/Telegram/telegram"
 
 # Function to send telegram messages
 send_msg() {
-  "${TELEGRAM}" -H -D \
-      "$(
-          for POST in "${@}"; do
-              echo "${POST}"
-          done
-      )"
+  if [ "${ENABLE_TELEGRAM}" = "yes" ]; then
+    "${TELEGRAM}" -H -D \
+        "$(
+            for POST in "${@}"; do
+                echo "${POST}"
+            done
+        )"
+  fi
 }
 
 # Function to upload files to telegram
 send_file() {
-  "${TELEGRAM}" -H \
-  -f "$1" \
-  "$2"
+  if [ "${ENABLE_TELEGRAM}" = "yes" ]; then
+    "${TELEGRAM}" -H \
+    -f "$1" \
+    "$2"
+  fi
 }
 
 # Function to push announcements to telegram
 send_announcement() {
-  "${TELEGRAM}" -c "${TELEGRAM_CHANNEL}" -H \
-  -f "$1" \
-  "$2"
+  if [ "${ENABLE_TELEGRAM}" = "yes" ]; then
+    "${TELEGRAM}" -c "${TELEGRAM_CHANNEL}" -H \
+    -f "$1" \
+    "$2"
+  fi
 }
 
 # Function to upload kernel to telegram
@@ -447,10 +461,18 @@ push() {
   
   ZIP=$(echo *.zip)
   MD5=$(md5sum "$ZIP" | cut -d' ' -f1)
-  send_file "$ZIP" "✅ Compilation took ${MinsTook} minute(s) and ${SecsTook} second(s). MD5: ${MD5}"
-  sleep 1
   
-  if [ "${SEND_ANNOUNCEMENT}" = "yes" ]; then
+  if [ "${ENABLE_TELEGRAM}" = "yes" ]; then
+    send_file "$ZIP" "✅ Compilation took ${MinsTook} minute(s) and ${SecsTook} second(s). MD5: ${MD5}"
+    sleep 1
+  else
+    msg "✅ Compilation completed successfully!"
+    msg "Build time: ${MinsTook} minute(s) and ${SecsTook} second(s)"
+    msg "ZIP file: $ZIP"
+    msg "MD5: ${MD5}"
+  fi
+  
+  if [ "${SEND_ANNOUNCEMENT}" = "yes" ] && [ "${ENABLE_TELEGRAM}" = "yes" ]; then
     sendannouncement
   else
     if [ "${CLEANUP}" = "yes" ]; then
@@ -681,10 +703,14 @@ compile_kernel() {
       if [ "${GenBuildLog}" = "yes" ];then
           BuildLog="build.log"
           err "Failed to compile, check build log to fix it!"
-          send_file "${BuildLog}" "Failed to compile kernel for ${DeviceCodename}, check build log to fix it!"
+          if [ "${ENABLE_TELEGRAM}" = "yes" ]; then
+              send_file "${BuildLog}" "Failed to compile kernel for ${DeviceCodename}, check build log to fix it!"
+          fi
       else
           err "Failed to compile, check console log to fix it!"
-          send_msg "Failed to compile kernel for ${DeviceCodename}, check console log to fix it!"
+          if [ "${ENABLE_TELEGRAM}" = "yes" ]; then
+              send_msg "Failed to compile kernel for ${DeviceCodename}, check console log to fix it!"
+          fi
       fi
       cleanup
       exit 1
@@ -692,7 +718,11 @@ compile_kernel() {
       msg "Successfully compiled the kernel!"
       if [ "${GenBuildLog}" = "yes" ]; then
           BuildLog="build.log"
-          send_file "${BuildLog}" "Successfully compiled the kernel! Here is the log if you want to check for what's going on."
+          if [ "${ENABLE_TELEGRAM}" = "yes" ]; then
+              send_file "${BuildLog}" "Successfully compiled the kernel! Here is the log if you want to check for what's going on."
+          else
+              msg "Build log saved as: ${BuildLog}"
+          fi
       fi
       if [ "${RegenerateDefconfig}" = "yes" ]; then
           regen_config
