@@ -451,7 +451,7 @@ send_announcement() {
   fi
 }
 
-# Function to upload kernel to telegram
+# Function to upload kernel to telegram and handle announcements
 push() {
   cd "${AnyKernelPath}" || { 
     err "AnyKernel path not found!"; 
@@ -465,6 +465,11 @@ push() {
   if [ "${ENABLE_TELEGRAM}" = "yes" ]; then
     send_file "$ZIP" "✅ Compilation took ${MinsTook} minute(s) and ${SecsTook} second(s). MD5: ${MD5}"
     sleep 1
+    
+    # Send announcement to channel if configured
+    if [ "${SEND_ANNOUNCEMENT}" = "yes" ]; then
+      send_build_announcement
+    fi
   else
     msg "✅ Compilation completed successfully!"
     msg "Build time: ${MinsTook} minute(s) and ${SecsTook} second(s)"
@@ -472,21 +477,9 @@ push() {
     msg "MD5: ${MD5}"
   fi
   
-  if [ "${SEND_ANNOUNCEMENT}" = "yes" ] && [ "${ENABLE_TELEGRAM}" = "yes" ]; then
-    sendannouncement
-  else
-    if [ "${CLEANUP}" = "yes" ]; then
-      cleanup
-    fi
-  fi
-}
-
-# Function to send announcement to given telegram channel
-sendannouncement() {
-  if [ "${KERNELSU}" = "yes" ]; then
-    ksuannounce
-  else
-    announce
+  # Cleanup if enabled
+  if [ "${CLEANUP}" = "yes" ]; then
+    cleanup
   fi
 }
 
@@ -494,59 +487,38 @@ sendannouncement() {
 # Stuffs to run after a successfull compilation #
 #################################################
 
-# Function of sending announcement
-announce() {
+# Unified function to send build announcement to Telegram channel
+send_build_announcement() {
   cd "${AnyKernelPath}" || return 1
   
   ZIP=$(echo *.zip)
-  send_announcement "$ZIP" "
-📢 | <i>New kernel build!</i>
+  
+  # Build announcement message
+  local announcement_msg="📢 | <i>New kernel build!</i>
 
 <b>• DATE :</b> <code>$(date +"%A, %d %b %Y, %H:%M:%S")</code>
 <b>• DEVICE :</b> <code>$DeviceModel (${DeviceCodename})</code>
 <b>• KERNEL NAME :</b> <code>${KernelName}</code>
 <b>• KERNEL LINUX VERSION :</b> <code>${Sublevel}</code>
 <b>• KERNEL VARIANT :</b> <code>${KERNEL_VARIANT}</code>
-<b>• KERNELSU :</b> <code>${KERNELSU}</code>
-<b>• MD5 :</b> <code>${MD5}</code>
+<b>• KERNELSU :</b> <code>${KERNELSU}</code>"
 
-<i>Compilation took ${MinsTook} minute(s) and ${SecsTook} second(s)</i>
-<i>!! Make sure to backup your boot and dtbo on TWRP before flashing !!</i>
-"
-  if [ "${CLEANUP}" = "yes" ]; then
-    cleanup
+  # Add KernelSU version if enabled
+  if [ "${KERNELSU}" = "yes" ] || [ "${KERNELSU_NEXT}" = "yes" ]; then
+    announcement_msg+="\n<b>• KERNELSU VERSION :</b> <code>${KERNELSU_VERSION}</code>"
   fi
-}
-
-# Function of sending announcement (KernelSU variant)
-ksuannounce() {
-  cd "${AnyKernelPath}" || return 1
   
-  ZIP=$(echo *.zip)
-  send_announcement "$ZIP" "
-📢 | <i>New kernel build!</i>
-
-<b>• DATE :</b> <code>$(date +"%A, %d %b %Y, %H:%M:%S")</code>
-<b>• DEVICE :</b> <code>$DeviceModel (${DeviceCodename})</code>
-<b>• KERNEL NAME :</b> <code>${KernelName}</code>
-<b>• KERNEL LINUX VERSION :</b> <code>${Sublevel}</code>
-<b>• KERNEL VARIANT :</b> <code>${KERNEL_VARIANT}</code>
-<b>• KERNELSU :</b> <code>${KERNELSU}</code>
-<b>• KERNELSU VERSION :</b> <code>${KERNELSU_VERSION}</code>
-<b>• MD5 :</b> <code>${MD5}</code>
+  announcement_msg+="\n<b>• MD5 :</b> <code>${MD5}</code>
 
 <i>Compilation took ${MinsTook} minute(s) and ${SecsTook} second(s)</i>
-<i>!! Make sure to backup your boot and dtbo on TWRP before flashing !!</i>
-"
-  if [ "${CLEANUP}" = "yes" ]; then
-    cleanup
-  fi
+<i>!! Make sure to backup your boot and dtbo on TWRP before flashing !!</i>"
+
+  send_announcement "$ZIP" "$announcement_msg"
 }
 
-# Function to send build info to the given telegram chat
-ksusendinfo() {
-  send_msg "
-  ⚙ <i>Kernel compilation has been started</i>
+# Unified function to send build info to the given telegram chat
+send_build_info() {
+  local build_info_msg="⚙ <i>Kernel compilation has been started</i>
   <b>===========================================</b>
   <b>• DATE :</b> <code>$(date +"%A, %d %b %Y, %H:%M:%S")</code>
   <b>• DEVICE :</b> <code>$DeviceModel (${DeviceCodename})</code>
@@ -556,28 +528,16 @@ ksusendinfo() {
   <b>• COMPILER :</b> <code>${COMPILER}</code>
   <b>• KERNEL VARIANT :</b> <code>${KERNEL_VARIANT}</code>
   <b>• KERNELSU :</b> <code>${KERNELSU}</code>
-  <b>• KERNELSU NEXT :</b> <code>${KERNELSU_NEXT}</code>
-  <b>• KERNELSU VERSION :</b> <code>${KERNELSU_VERSION}</code>
-  <b>===========================================</b>
-  "
-}
+  <b>• KERNELSU NEXT :</b> <code>${KERNELSU_NEXT}</code>"
 
-# Function to send build info to the given telegram chat
-sendinfo() {
-  send_msg "
-  ⚙ <i>Kernel compilation has been started</i>
-  <b>===========================================</b>
-  <b>• DATE :</b> <code>$(date +"%A, %d %b %Y, %H:%M:%S")</code>
-  <b>• DEVICE :</b> <code>$DeviceModel (${DeviceCodename})</code>
-  <b>• KERNEL NAME :</b> <code>${KernelName}</code>
-  <b>• KERNEL LINUX VERSION :</b> <code>${Sublevel}</code>
-  <b>• KERNEL BRANCH :</b> <code>${Branch}</code>
-  <b>• COMPILER :</b> <code>${COMPILER}</code>
-  <b>• KERNEL VARIANT :</b> <code>${KERNEL_VARIANT}</code>
-  <b>• KERNELSU :</b> <code>${KERNELSU}</code>
-  <b>• KERNELSU NEXT :</b> <code>${KERNELSU_NEXT}</code>
-  <b>===========================================</b>
-  "
+  # Add KernelSU version if enabled
+  if [ "${KERNELSU}" = "yes" ] || [ "${KERNELSU_NEXT}" = "yes" ]; then
+    build_info_msg+="\n  <b>• KERNELSU VERSION :</b> <code>${KERNELSU_VERSION}</code>"
+  fi
+  
+  build_info_msg+="\n  <b>===========================================</b>"
+  
+  send_msg "$build_info_msg"
 }
 
 # Function to make a flashable zip
@@ -641,12 +601,8 @@ compile_kernel() {
   # The time when compilation have started
   StartTime="$(date +"%s")"
 
-  # Send info to telegram chat
-  if [ "${KERNELSU}" = "yes" ] || [ "${KERNELSU_NEXT}" = "yes" ]; then
-    ksusendinfo
-  else
-    sendinfo
-  fi
+  # Send build info to telegram chat
+  send_build_info
 
   # Disable LLVM POLLY on proton clang
   if [ "${ClangName}" = "proton" ]; then
