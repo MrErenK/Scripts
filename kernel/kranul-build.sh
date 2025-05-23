@@ -19,22 +19,44 @@
 # Inspired from Panchajanya1999's script
 #
 
-# Exit on error
-set -e
+# Exit on error and set error trap
+set -eE
+trap 'handle_error $? $LINENO $BASH_LINENO "$BASH_COMMAND" $(printf "::%s" ${FUNCNAME[@]:-})' ERR
+
+# Logging function
+log() {
+    local level="$1"
+    shift
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] [$level] $*" | tee -a build.log
+}
+
+# Error handling function
+handle_error() {
+    local exit_code=$1
+    local line_no=$2
+    local bash_lineno=$3
+    local last_command=$4
+    local func_trace=$5
+
+    log "ERROR" "Command '$last_command' failed with exit code $exit_code at line $line_no"
+    log "ERROR" "Function trace: $func_trace"
+    cleanup 1
+    exit $exit_code
+}
 
 # Function to show informational message
 msg() {
-    echo -e "\e[1;32m$*\e[0m"
+    log "INFO" "$*"
 }
 
 # Function to show error message
 err() {
-    echo -e "\e[1;31m$*\e[0m"
+    log "ERROR" "$*"
 }
 
 # Function to show warning message
 warn() {
-    echo -e "\e[1;33m$*\e[0m"
+    log "WARNING" "$*"
 }
 
 # Function to cleanup leftovers from build
@@ -62,6 +84,28 @@ fi
 
 # Load variables from config.env
 source config.env
+
+# Validate configuration
+validate_config() {
+    local required_vars=(
+        "DeviceCodename" "DeviceModel" "DeviceArch" "DefConfig"
+        "KernelName" "KERNEL_VARIANT" "ClangName"
+    )
+
+    for var in "${required_vars[@]}"; do
+        if [ -z "${!var}" ]; then
+            log "ERROR" "Required variable $var is not set in config.env"
+            return 1
+        fi
+    done
+
+    if [ "${KERNELSU}" = "yes" ] && [ "${KERNELSU_NEXT}" = "yes" ]; then
+        log "ERROR" "Cannot enable both KERNELSU and KERNELSU_NEXT"
+        return 1
+    fi
+}
+
+validate_config || exit 1
 
 # Function to read user input securely
 get_input() {
@@ -166,6 +210,19 @@ export_variables()
 
   # Export all necessary variables
   export AnyKernelPath AvailableCores ClangPath COMPILER KBUILD_BUILD_USER KBUILD_BUILD_HOST KBUILD_COMPILER_STRING PATH TZ LD_LIBRARY_PATH
+}
+
+# Function to validate toolchain
+validate_toolchain() {
+    if [ ! -x "${ClangPath}/bin/clang" ]; then
+        log "ERROR" "Clang not found at ${ClangPath}/bin/clang"
+        return 1
+    fi
+    
+    if [[ "${ClangName}" =~ ^(aosp|yuki)$ ]] && [ ! -d "gcc32" -o ! -d "gcc64" ]; then
+        log "ERROR" "GCC toolchains not found for ${ClangName}"
+        return 1
+    fi
 }
 
 # Function to clone anykernel
@@ -597,6 +654,8 @@ regen_config() {
 # Function to start compilation of the kernel
 compile_kernel() {
   [[ "$(pwd)" != "${MainPath}" ]] && cd "${MainPath}"
+
+  validate_toolchain || exit 1
 
   # The time when compilation have started
   StartTime="$(date +"%s")"
